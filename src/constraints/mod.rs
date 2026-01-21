@@ -2,12 +2,11 @@ pub mod constraint;
 pub mod error;
 pub mod node;
 pub mod operations;
-pub mod tree;
 
 pub use constraint::Constraint;
 pub use constraint::IntervalConstraint;
 pub use error::ConstraintError;
-pub use node::ConstraintNode;
+pub use node::ConstraintExpr;
 
 use qtty::{Quantity, Unit};
 

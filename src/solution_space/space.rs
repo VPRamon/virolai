@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 
 use super::interval::Interval;
+use crate::constraints::Constraint;
 use qtty::{Quantity, Unit};
 
 /// Collection of valid intervals where tasks may be scheduled.
@@ -298,7 +299,7 @@ impl<U: Unit> Display for SolutionSpace<U> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constraints::{ConstraintNode, IntervalConstraint};
+    use crate::constraints::{ConstraintExpr, IntervalConstraint};
     use crate::scheduling_block::{SchedulingBlock, Task};
     use qtty::{Quantity, Second};
 
@@ -307,10 +308,12 @@ mod tests {
         id: u64,
         name: String,
         size: Quantity<Second>,
-        constraints: Option<ConstraintNode<Second>>,
+        constraints: Option<ConstraintExpr<IntervalConstraint<Second>>>,
     }
 
     impl Task<Second> for TestTask {
+        type ConstraintLeaf = IntervalConstraint<Second>;
+
         fn id(&self) -> u64 {
             self.id
         }
@@ -323,7 +326,7 @@ mod tests {
             self.size
         }
 
-        fn constraints(&self) -> Option<&ConstraintNode<Second>> {
+        fn constraints(&self) -> Option<&ConstraintExpr<IntervalConstraint<Second>>> {
             self.constraints.as_ref()
         }
     }
@@ -381,7 +384,7 @@ mod tests {
             id: 1,
             name: "Task1".to_string(),
             size: Quantity::<Second>::new(10.0),
-            constraints: Some(ConstraintNode::leaf(constraint)),
+            constraints: Some(ConstraintExpr::leaf(constraint)),
         };
         let idx = block.add_task(task);
 
@@ -408,7 +411,7 @@ mod tests {
             id: 1,
             name: "Task1".to_string(),
             size: Quantity::<Second>::new(10.0),
-            constraints: Some(ConstraintNode::leaf(constraint1)),
+            constraints: Some(ConstraintExpr::leaf(constraint1)),
         };
         let idx1 = block.add_task(task1);
 
@@ -417,7 +420,7 @@ mod tests {
             id: 2,
             name: "Task2".to_string(),
             size: Quantity::<Second>::new(15.0),
-            constraints: Some(ConstraintNode::leaf(constraint2)),
+            constraints: Some(ConstraintExpr::leaf(constraint2)),
         };
         let idx2 = block.add_task(task2);
 
@@ -520,7 +523,7 @@ mod tests {
             id: 1,
             name: "Task1".to_string(),
             size: Quantity::<Second>::new(10.0),
-            constraints: Some(ConstraintNode::leaf(constraint1)),
+            constraints: Some(ConstraintExpr::leaf(constraint1)),
         };
         let idx1 = block.add_task(task1);
 
@@ -529,7 +532,7 @@ mod tests {
             id: 2,
             name: "Task2".to_string(),
             size: Quantity::<Second>::new(10.0),
-            constraints: Some(ConstraintNode::leaf(constraint2)),
+            constraints: Some(ConstraintExpr::leaf(constraint2)),
         };
         block.add_task(task2);
 

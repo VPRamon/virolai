@@ -124,6 +124,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constraints::IntervalConstraint;
     use qtty::Second;
 
     #[derive(Debug, Clone)]
@@ -135,6 +136,8 @@ mod tests {
     }
 
     impl Task<Second> for TestTask {
+        type ConstraintLeaf = IntervalConstraint<Second>;
+
         fn id(&self) -> u64 {
             self.id
         }

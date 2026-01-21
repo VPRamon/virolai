@@ -1,6 +1,7 @@
 //! Solution space population utilities.
 
 use super::Interval;
+use crate::constraints::Constraint;
 use crate::scheduling_block::{SchedulingBlock, Task};
 use qtty::{Quantity, Unit};
 

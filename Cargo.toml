@@ -12,3 +12,6 @@ petgraph = "0.8.3"
 qtty = "0.2.2"
 thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"], optional = true }
+
+[dev-dependencies]
+serde_json = "1.0"
