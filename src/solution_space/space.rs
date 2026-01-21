@@ -61,8 +61,8 @@ impl<U: Unit> SolutionSpace<U> {
     /// # Example
     ///
     /// ```ignore
-    /// use virolai::solution_space::{SolutionSpace, Interval};
-    /// use virolai::scheduling_block::SchedulingBlock;
+    /// use v_rolai::solution_space::{SolutionSpace, Interval};
+    /// use v_rolai::scheduling_block::SchedulingBlock;
     /// use qtty::{Quantity, Second};
     ///
     /// let block = SchedulingBlock::new();

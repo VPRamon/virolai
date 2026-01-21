@@ -22,7 +22,7 @@ At a glance:
 The `Constraint` trait is the interface for all leaf constraints:
 
 ```rust
-use virolai::scheduling_block::{Interval, SolutionSpace};
+use v_rolai::scheduling_block::{Interval, SolutionSpace};
 use qtty::Unit;
 use std::fmt::Debug;
 
@@ -45,7 +45,7 @@ Contract for `compute_intervals` (relied on by set-operations):
 ```rust
 use qtty::Unit;
 use std::sync::Arc;
-use virolai::constraints::Constraint;
+use v_rolai::constraints::Constraint;
 
 pub enum ConstraintNode<U: Unit> {
     Leaf(Arc<dyn Constraint<U>>),
@@ -72,8 +72,8 @@ Evaluation:
 
 ```rust
 use qtty::Second;
-use virolai::constraints::IntervalConstraint;
-use virolai::scheduling_block::Interval;
+use v_rolai::constraints::IntervalConstraint;
+use v_rolai::scheduling_block::Interval;
 
 let window = IntervalConstraint::new(Interval::<Second>::from_f64(0.0, 100.0));
 ```
@@ -84,8 +84,8 @@ let window = IntervalConstraint::new(Interval::<Second>::from_f64(0.0, 100.0));
 
 ```rust
 use qtty::Second;
-use virolai::constraints::{ConstraintNode, IntervalConstraint};
-use virolai::scheduling_block::Interval;
+use v_rolai::constraints::{ConstraintNode, IntervalConstraint};
+use v_rolai::scheduling_block::Interval;
 
 let a = IntervalConstraint::new(Interval::<Second>::from_f64(0.0, 100.0));
 let b = IntervalConstraint::new(Interval::<Second>::from_f64(50.0, 150.0));
@@ -100,8 +100,8 @@ let valid = tree.compute_intervals(Interval::<Second>::from_f64(0.0, 200.0));
 
 ```rust
 use qtty::Second;
-use virolai::constraints::{ConstraintNode, IntervalConstraint};
-use virolai::scheduling_block::Interval;
+use v_rolai::constraints::{ConstraintNode, IntervalConstraint};
+use v_rolai::scheduling_block::Interval;
 
 let morning = IntervalConstraint::new(Interval::<Second>::from_f64(6.0 * 3600.0, 12.0 * 3600.0));
 let evening = IntervalConstraint::new(Interval::<Second>::from_f64(18.0 * 3600.0, 23.0 * 3600.0));
@@ -116,8 +116,8 @@ let valid = tree.compute_intervals(Interval::<Second>::from_f64(0.0, 24.0 * 3600
 
 ```rust
 use qtty::Second;
-use virolai::constraints::{ConstraintNode, IntervalConstraint};
-use virolai::scheduling_block::Interval;
+use v_rolai::constraints::{ConstraintNode, IntervalConstraint};
+use v_rolai::scheduling_block::Interval;
 
 let allowed = ConstraintNode::leaf(IntervalConstraint::new(Interval::<Second>::from_f64(0.0, 100.0)));
 let forbidden = ConstraintNode::leaf(IntervalConstraint::new(Interval::<Second>::from_f64(20.0, 40.0)));
@@ -131,8 +131,8 @@ let valid = tree.compute_intervals(Interval::<Second>::from_f64(0.0, 100.0));
 
 ```rust
 use qtty::Second;
-use virolai::constraints::{ConstraintNode, IntervalConstraint};
-use virolai::scheduling_block::Interval;
+use v_rolai::constraints::{ConstraintNode, IntervalConstraint};
+use v_rolai::scheduling_block::Interval;
 
 let mut tree = ConstraintNode::intersection(Vec::new());
 for i in 0..5 {

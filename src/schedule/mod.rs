@@ -28,8 +28,8 @@ mod tests;
 /// # Examples
 ///
 /// ```
-/// use virolai::schedule::Schedule;
-/// use virolai::solution_space::Interval;
+/// use v_rolai::schedule::Schedule;
+/// use v_rolai::solution_space::Interval;
 /// use qtty::{Quantity, Second};
 ///
 /// let mut schedule = Schedule::<Second>::new();
