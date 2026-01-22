@@ -183,7 +183,7 @@ where
 {
     /// Computes critical path: longest chain through the dependency graph.
     ///
-    /// Returns total duration (in the same units as task sizes) and the sequence of nodes
+    /// Returns total duration (in axis units) and the sequence of nodes
     /// on the critical path.
     ///
     /// # Errors
@@ -200,7 +200,8 @@ where
 
         for &node in &topo {
             let node_idx = node.index();
-            let task_duration = self.graph[node].size().value();
+            // Use size_on_axis() for scheduling math
+            let task_duration = self.graph[node].size_on_axis().value();
 
             for successor in self.successors(node) {
                 let succ_idx = successor.index();
@@ -218,7 +219,8 @@ where
 
         for node in self.graph.node_indices() {
             let node_idx = node.index();
-            let finish_time = earliest_start[node_idx] + self.graph[node].size().value();
+            // Use size_on_axis() for scheduling math
+            let finish_time = earliest_start[node_idx] + self.graph[node].size_on_axis().value();
 
             if finish_time > max_finish {
                 max_finish = finish_time;
@@ -260,7 +262,7 @@ where
                     "    [{}] {} (size: {}, priority: {})",
                     node.index(),
                     task.name(),
-                    task.size(),
+                    task.size_on_axis(),
                     task.priority()
                 )?;
             }

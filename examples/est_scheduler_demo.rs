@@ -1,22 +1,23 @@
 //! Demonstration of the Early Starting Time (EST) scheduling algorithm.
 
 use qtty::{Quantity, Second};
-use virolai::algorithms::{ESTScheduler, SchedulingAlgorithm};
-use virolai::scheduling_block::{SchedulingBlock, Task};
-use virolai::solution_space::{Interval, SolutionSpace};
+use vrolai::algorithms::{ESTScheduler, SchedulingAlgorithm};
+use vrolai::constraints::IntervalConstraint;
+use vrolai::scheduling_block::{SchedulingBlock, Task};
+use vrolai::solution_space::{Interval, SolutionSpace};
 
 #[derive(Debug, Clone)]
 struct SimpleTask {
-    id: u64,
+    id: String,
     name: String,
     duration: Quantity<Second>,
     priority: i32,
 }
 
 impl SimpleTask {
-    fn new(id: u64, name: &str, duration_sec: f64, priority: i32) -> Self {
+    fn new(id: &str, name: &str, duration_sec: f64, priority: i32) -> Self {
         Self {
-            id,
+            id: id.to_string(),
             name: name.to_string(),
             duration: Quantity::new(duration_sec),
             priority,
@@ -25,8 +26,11 @@ impl SimpleTask {
 }
 
 impl Task<Second> for SimpleTask {
-    fn id(&self) -> u64 {
-        self.id
+    type SizeUnit = Second;
+    type ConstraintLeaf = IntervalConstraint<Second>;
+
+    fn id(&self) -> &str {
+        &self.id
     }
 
     fn name(&self) -> String {
@@ -47,10 +51,10 @@ fn main() {
     let mut block = SchedulingBlock::<SimpleTask, Second>::new();
 
     // Add tasks with different priorities and durations
-    let task1 = SimpleTask::new(1, "High Priority Task", 300.0, 10);
-    let task2 = SimpleTask::new(2, "Medium Priority Task", 200.0, 5);
-    let task3 = SimpleTask::new(3, "Low Priority Task", 150.0, 1);
-    let task4 = SimpleTask::new(4, "Another Medium Task", 250.0, 5);
+    let task1 = SimpleTask::new("1", "High Priority Task", 300.0, 10);
+    let task2 = SimpleTask::new("2", "Medium Priority Task", 200.0, 5);
+    let task3 = SimpleTask::new("3", "Low Priority Task", 150.0, 1);
+    let task4 = SimpleTask::new("4", "Another Medium Task", 250.0, 5);
 
     block.add_task(task1);
     block.add_task(task2);

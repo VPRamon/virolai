@@ -93,7 +93,8 @@ impl<U: Unit> SolutionSpace<U> {
                     .filter_map(|i| block.get_task(i))
             })
             .map(|task| {
-                let task_size = task.size();
+                // Use size_on_axis() to get duration in axis units
+                let task_size = task.size_on_axis();
                 let intervals = task.constraints().map_or_else(
                     || vec![range],
                     |ct| {
@@ -313,6 +314,7 @@ mod tests {
     }
 
     impl Task<Second> for TestTask {
+        type SizeUnit = Second;
         type ConstraintLeaf = IntervalConstraint<Second>;
 
         fn id(&self) -> &str {
@@ -521,7 +523,7 @@ mod tests {
 
         let constraint1 = IntervalConstraint::new(Interval::<Second>::from_f64(5000.0, 10000.0));
         let task1 = TestTask {
-            id: 1,
+            id: "1".to_string(),
             name: "Task1".to_string(),
             size: Quantity::<Second>::new(10.0),
             constraints: Some(ConstraintExpr::leaf(constraint1)),
@@ -530,7 +532,7 @@ mod tests {
 
         let constraint2 = IntervalConstraint::new(Interval::<Second>::from_f64(0.0, 1000.0));
         let task2 = TestTask {
-            id: 2,
+            id: "2".to_string(),
             name: "Task2".to_string(),
             size: Quantity::<Second>::new(10.0),
             constraints: Some(ConstraintExpr::leaf(constraint2)),

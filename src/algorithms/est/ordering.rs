@@ -70,7 +70,8 @@ where
         }
 
         // Check if scheduling flexible first would block endangered
-        let flexible_end = est_f + flexible.task().size();
+        // Use size_on_axis() to get duration in the scheduling axis unit
+        let flexible_end = est_f + flexible.task().size_on_axis();
 
         // If flexible ends before endangered's deadline, flexible can go first
         if flexible_end.value() <= deadline_e.value() {

@@ -136,6 +136,7 @@ mod tests {
     }
 
     impl Task<Second> for TestTask {
+        type SizeUnit = Second;
         type ConstraintLeaf = IntervalConstraint<Second>;
 
         fn id(&self) -> &str {

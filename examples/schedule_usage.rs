@@ -47,7 +47,7 @@ fn main() {
 
     // Try to add an overlapping task
     println!("\n--- Attempting to Add Overlapping Task ---");
-    let result = schedule.add(5, Interval::from_f64(12.0, 20.0));
+    let result = schedule.add("5", Interval::from_f64(12.0, 20.0));
     match result {
         Ok(_) => println!("Task 5 added successfully"),
         Err(e) => println!("Failed to add task 5: {}", e),
@@ -85,7 +85,7 @@ fn main() {
     for time in test_times {
         match schedule.task_at(Time::new(time)).unwrap() {
             Some(id) => {
-                let interval = schedule.get_interval(id).unwrap();
+                let interval = schedule.get_interval(&id).unwrap();
                 println!("Time {:.1}s -> Task {} {}", time, id, interval);
             }
             None => println!("Time {:.1}s -> No task scheduled", time),
@@ -94,7 +94,7 @@ fn main() {
 
     // Remove a task and show the gap
     println!("\n--- Removing Task ---");
-    if let Some(removed) = schedule.remove(2) {
+    if let Some(removed) = schedule.remove("2") {
         println!("Removed task 2: {}", removed);
         println!("Remaining tasks: {}", schedule.len());
     }
@@ -107,7 +107,7 @@ fn main() {
     // Demonstrate adding to the freed slot
     println!("\n--- Adding Task to Freed Slot ---");
     let new_task = Interval::from_f64(16.0, 24.0);
-    match schedule.add(5, new_task) {
+    match schedule.add("5", new_task) {
         Ok(_) => println!("Successfully added task 5: {}", new_task),
         Err(e) => println!("Failed: {}", e),
     }

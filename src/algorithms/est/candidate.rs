@@ -7,22 +7,22 @@ use qtty::{Quantity, Unit};
 
 /// Candidate task for scheduling with computed metrics.
 #[derive(Debug, Clone)]
-pub struct Candidate<T, U>
+pub struct Candidate<T, A>
 where
-    T: Task<U>,
-    U: Unit,
+    T: Task<A>,
+    A: Unit,
 {
     pub(crate) task: T,
     pub(crate) task_id: Id,
-    pub(crate) est: Option<Quantity<U>>,
-    pub(crate) deadline: Option<Quantity<U>>,
-    pub(crate) flexibility: Quantity<U>,
+    pub(crate) est: Option<Quantity<A>>,
+    pub(crate) deadline: Option<Quantity<A>>,
+    pub(crate) flexibility: Quantity<A>,
 }
 
-impl<T, U> Candidate<T, U>
+impl<T, A> Candidate<T, A>
 where
-    T: Task<U>,
-    U: Unit,
+    T: Task<A>,
+    A: Unit,
 {
     /// Creates a new candidate with uninitialized metrics.
     pub fn new(task: T) -> Self {
@@ -51,10 +51,10 @@ where
         !self.is_impossible() && self.flexibility.value() > threshold as f64
     }
 
-    /// Get the scheduling period for this candidate.
-    pub fn get_period(&self) -> Option<Interval<U>> {
+    /// Get the scheduling period for this candidate (in axis units).
+    pub fn get_period(&self) -> Option<Interval<A>> {
         self.est
-            .map(|start| Interval::new(start, start + self.task.size()))
+            .map(|start| Interval::new(start, start + self.task.size_on_axis()))
     }
 
     /// Get task reference.
@@ -68,17 +68,17 @@ where
     }
 
     /// Get earliest start time.
-    pub fn est(&self) -> Option<Quantity<U>> {
+    pub fn est(&self) -> Option<Quantity<A>> {
         self.est
     }
 
     /// Get deadline.
-    pub fn deadline(&self) -> Option<Quantity<U>> {
+    pub fn deadline(&self) -> Option<Quantity<A>> {
         self.deadline
     }
 
     /// Get flexibility.
-    pub fn flexibility(&self) -> Quantity<U> {
+    pub fn flexibility(&self) -> Quantity<A> {
         self.flexibility
     }
 }
