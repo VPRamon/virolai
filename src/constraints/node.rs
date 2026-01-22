@@ -48,12 +48,12 @@ use serde::{Deserialize, Serialize};
 /// ```
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(untagged))]
+#[cfg_attr(feature = "serde", serde(tag = "type", rename_all = "snake_case"))]
 pub enum ConstraintExpr<C> {
     /// Logical NOT of a subtree.
     Not {
         /// Type discriminator for serialization
-        #[cfg_attr(feature = "serde", serde(rename = "type"))]
+        #[cfg_attr(feature = "serde", serde(skip))]
         type_: String,
         /// The child subtree to negate.
         child: Box<ConstraintExpr<C>>,
@@ -61,7 +61,7 @@ pub enum ConstraintExpr<C> {
     /// Logical AND (intersection) of multiple subtrees.
     Intersection {
         /// Type discriminator for serialization
-        #[cfg_attr(feature = "serde", serde(rename = "type"))]
+        #[cfg_attr(feature = "serde", serde(skip))]
         type_: String,
         /// Child subtrees (all must be satisfied).
         children: Vec<ConstraintExpr<C>>,
@@ -69,12 +69,13 @@ pub enum ConstraintExpr<C> {
     /// Logical OR (union) of multiple subtrees.
     Union {
         /// Type discriminator for serialization
-        #[cfg_attr(feature = "serde", serde(rename = "type"))]
+        #[cfg_attr(feature = "serde", serde(skip))]
         type_: String,
         /// Child subtrees (at least one must be satisfied).
         children: Vec<ConstraintExpr<C>>,
     },
     /// A leaf constraint - serializes directly without wrapper.
+    #[serde(untagged)]
     Leaf(C),
 }
 
