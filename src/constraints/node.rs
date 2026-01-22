@@ -48,25 +48,34 @@ use serde::{Deserialize, Serialize};
 /// ```
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(tag = "op", rename_all = "snake_case"))]
+#[cfg_attr(feature = "serde", serde(untagged))]
 pub enum ConstraintExpr<C> {
-    /// A leaf constraint.
-    Leaf(C),
     /// Logical NOT of a subtree.
     Not {
+        /// Type discriminator for serialization
+        #[cfg_attr(feature = "serde", serde(rename = "type"))]
+        type_: String,
         /// The child subtree to negate.
         child: Box<ConstraintExpr<C>>,
     },
     /// Logical AND (intersection) of multiple subtrees.
     Intersection {
+        /// Type discriminator for serialization
+        #[cfg_attr(feature = "serde", serde(rename = "type"))]
+        type_: String,
         /// Child subtrees (all must be satisfied).
         children: Vec<ConstraintExpr<C>>,
     },
     /// Logical OR (union) of multiple subtrees.
     Union {
+        /// Type discriminator for serialization
+        #[cfg_attr(feature = "serde", serde(rename = "type"))]
+        type_: String,
         /// Child subtrees (at least one must be satisfied).
         children: Vec<ConstraintExpr<C>>,
     },
+    /// A leaf constraint - serializes directly without wrapper.
+    Leaf(C),
 }
 
 impl<C> ConstraintExpr<C> {
@@ -78,18 +87,25 @@ impl<C> ConstraintExpr<C> {
     /// Creates a NOT node wrapping a subtree.
     pub fn not(child: ConstraintExpr<C>) -> Self {
         ConstraintExpr::Not {
+            type_: "not".to_string(),
             child: Box::new(child),
         }
     }
 
     /// Creates an intersection node (AND logic).
     pub fn intersection(children: Vec<ConstraintExpr<C>>) -> Self {
-        ConstraintExpr::Intersection { children }
+        ConstraintExpr::Intersection {
+            type_: "intersection".to_string(),
+            children,
+        }
     }
 
     /// Creates a union node (OR logic).
     pub fn union(children: Vec<ConstraintExpr<C>>) -> Self {
-        ConstraintExpr::Union { children }
+        ConstraintExpr::Union {
+            type_: "union".to_string(),
+            children,
+        }
     }
 
     /// Returns whether this node is a leaf.
@@ -119,8 +135,8 @@ impl<C> ConstraintExpr<C> {
     pub fn depth(&self) -> usize {
         match self {
             ConstraintExpr::Leaf(_) => 1,
-            ConstraintExpr::Not { child } => 1 + child.depth(),
-            ConstraintExpr::Intersection { children } | ConstraintExpr::Union { children } => {
+            ConstraintExpr::Not { type_: _, child } => 1 + child.depth(),
+            ConstraintExpr::Intersection { type_: _, children } | ConstraintExpr::Union { type_: _, children } => {
                 1 + children.iter().map(|c| c.depth()).max().unwrap_or(0)
             }
         }
@@ -130,8 +146,8 @@ impl<C> ConstraintExpr<C> {
     pub fn node_count(&self) -> usize {
         match self {
             ConstraintExpr::Leaf(_) => 1,
-            ConstraintExpr::Not { child } => 1 + child.node_count(),
-            ConstraintExpr::Intersection { children } | ConstraintExpr::Union { children } => {
+            ConstraintExpr::Not { type_: _, child } => 1 + child.node_count(),
+            ConstraintExpr::Intersection { type_: _, children } | ConstraintExpr::Union { type_: _, children } => {
                 1 + children.iter().map(|c| c.node_count()).sum::<usize>()
             }
         }
@@ -141,8 +157,8 @@ impl<C> ConstraintExpr<C> {
     pub fn leaf_count(&self) -> usize {
         match self {
             ConstraintExpr::Leaf(_) => 1,
-            ConstraintExpr::Not { child } => child.leaf_count(),
-            ConstraintExpr::Intersection { children } | ConstraintExpr::Union { children } => {
+            ConstraintExpr::Not { type_: _, child } => child.leaf_count(),
+            ConstraintExpr::Intersection { type_: _, children } | ConstraintExpr::Union { type_: _, children } => {
                 children.iter().map(|c| c.leaf_count()).sum()
             }
         }
@@ -152,7 +168,7 @@ impl<C> ConstraintExpr<C> {
     pub fn children(&self) -> Option<&[ConstraintExpr<C>]> {
         match self {
             ConstraintExpr::Leaf(_) | ConstraintExpr::Not { .. } => None,
-            ConstraintExpr::Intersection { children } | ConstraintExpr::Union { children } => {
+            ConstraintExpr::Intersection { children, .. } | ConstraintExpr::Union { children, .. } => {
                 Some(children)
             }
         }
@@ -162,7 +178,7 @@ impl<C> ConstraintExpr<C> {
     pub fn children_mut(&mut self) -> Option<&mut Vec<ConstraintExpr<C>>> {
         match self {
             ConstraintExpr::Leaf(_) | ConstraintExpr::Not { .. } => None,
-            ConstraintExpr::Intersection { children } | ConstraintExpr::Union { children } => {
+            ConstraintExpr::Intersection { type_: _, children } | ConstraintExpr::Union { type_: _, children } => {
                 Some(children)
             }
         }
@@ -176,8 +192,8 @@ impl<C> ConstraintExpr<C> {
         visitor(self);
         match self {
             ConstraintExpr::Leaf(_) => {}
-            ConstraintExpr::Not { child } => child.visit_preorder(visitor),
-            ConstraintExpr::Intersection { children } | ConstraintExpr::Union { children } => {
+            ConstraintExpr::Not { type_: _, child } => child.visit_preorder(visitor),
+            ConstraintExpr::Intersection { type_: _, children } | ConstraintExpr::Union { type_: _, children } => {
                 for child in children {
                     child.visit_preorder(visitor);
                 }
@@ -192,8 +208,8 @@ impl<C> ConstraintExpr<C> {
     {
         match self {
             ConstraintExpr::Leaf(constraint) => visitor(constraint),
-            ConstraintExpr::Not { child } => child.visit_leaves(visitor),
-            ConstraintExpr::Intersection { children } | ConstraintExpr::Union { children } => {
+            ConstraintExpr::Not { type_: _, child } => child.visit_leaves(visitor),
+            ConstraintExpr::Intersection { type_: _, children } | ConstraintExpr::Union { type_: _, children } => {
                 for child in children {
                     child.visit_leaves(visitor);
                 }
@@ -208,13 +224,16 @@ impl<C> ConstraintExpr<C> {
     {
         match self {
             ConstraintExpr::Leaf(c) => ConstraintExpr::Leaf(f(c)),
-            ConstraintExpr::Not { child } => ConstraintExpr::Not {
+            ConstraintExpr::Not { child, .. } => ConstraintExpr::Not {
+                type_: "not".to_string(),
                 child: Box::new(child.map_leaves(f)),
             },
-            ConstraintExpr::Intersection { children } => ConstraintExpr::Intersection {
+            ConstraintExpr::Intersection { children, .. } => ConstraintExpr::Intersection {
+                type_: "intersection".to_string(),
                 children: children.into_iter().map(|c| c.map_leaves(f)).collect(),
             },
-            ConstraintExpr::Union { children } => ConstraintExpr::Union {
+            ConstraintExpr::Union { children, .. } => ConstraintExpr::Union {
+                type_: "union".to_string(),
                 children: children.into_iter().map(|c| c.map_leaves(f)).collect(),
             },
         }
@@ -235,17 +254,17 @@ impl<C> ConstraintExpr<C> {
             ConstraintExpr::Leaf(constraint) => {
                 println!("{}└─ Leaf: {}", prefix, leaf_fmt(constraint));
             }
-            ConstraintExpr::Not { child } => {
+            ConstraintExpr::Not { child, .. } => {
                 println!("{}└─ Not", prefix);
                 child.print_tree_with(indent + 1, leaf_fmt);
             }
-            ConstraintExpr::Intersection { children } => {
+            ConstraintExpr::Intersection { children, .. } => {
                 println!("{}└─ Intersection", prefix);
                 for child in children {
                     child.print_tree_with(indent + 1, leaf_fmt);
                 }
             }
-            ConstraintExpr::Union { children } => {
+            ConstraintExpr::Union { children, .. } => {
                 println!("{}└─ Union", prefix);
                 for child in children {
                     child.print_tree_with(indent + 1, leaf_fmt);
@@ -263,15 +282,17 @@ impl<C: Clone> ConstraintExpr<C> {
     pub fn flatten(&self) -> ConstraintExpr<C> {
         match self {
             ConstraintExpr::Leaf(constraint) => ConstraintExpr::Leaf(constraint.clone()),
-            ConstraintExpr::Not { child } => ConstraintExpr::Not {
+            ConstraintExpr::Not { child, .. } => ConstraintExpr::Not {
+                type_: "not".to_string(),
                 child: Box::new(child.flatten()),
             },
-            ConstraintExpr::Intersection { children } => {
+            ConstraintExpr::Intersection { children, .. } => {
                 let mut new_children = Vec::with_capacity(children.len() * 2);
                 for child in children {
                     let flattened = child.flatten();
                     if let ConstraintExpr::Intersection {
                         children: mut nested,
+                        ..
                     } = flattened
                     {
                         new_children.append(&mut nested);
@@ -281,15 +302,17 @@ impl<C: Clone> ConstraintExpr<C> {
                 }
                 new_children.shrink_to_fit();
                 ConstraintExpr::Intersection {
+                    type_: "intersection".to_string(),
                     children: new_children,
                 }
             }
-            ConstraintExpr::Union { children } => {
+            ConstraintExpr::Union { children, .. } => {
                 let mut new_children = Vec::with_capacity(children.len() * 2);
                 for child in children {
                     let flattened = child.flatten();
                     if let ConstraintExpr::Union {
                         children: mut nested,
+                        ..
                     } = flattened
                     {
                         new_children.append(&mut nested);
@@ -299,6 +322,7 @@ impl<C: Clone> ConstraintExpr<C> {
                 }
                 new_children.shrink_to_fit();
                 ConstraintExpr::Union {
+                    type_: "union".to_string(),
                     children: new_children,
                 }
             }
@@ -325,15 +349,15 @@ where
     fn compute_intervals(&self, range: Interval<U>) -> Vec<Interval<U>> {
         match self {
             ConstraintExpr::Leaf(constraint) => constraint.compute_intervals(range),
-            ConstraintExpr::Not { child } => {
+            ConstraintExpr::Not { child, .. } => {
                 super::operations::compute_complement(child.compute_intervals(range), range)
             }
-            ConstraintExpr::Intersection { children } => children
+            ConstraintExpr::Intersection { children, .. } => children
                 .iter()
                 .map(|c| c.compute_intervals(range))
                 .reduce(|acc, v| super::operations::compute_intersection(&acc, &v))
                 .unwrap_or_default(),
-            ConstraintExpr::Union { children } => children
+            ConstraintExpr::Union { children, .. } => children
                 .iter()
                 .map(|c| c.compute_intervals(range))
                 .fold(Vec::new(), |acc, v| {
@@ -345,8 +369,8 @@ where
     fn stringify(&self) -> String {
         match self {
             ConstraintExpr::Leaf(constraint) => constraint.stringify(),
-            ConstraintExpr::Not { child } => format!("Not({})", child.stringify()),
-            ConstraintExpr::Intersection { children } => format!(
+            ConstraintExpr::Not { child, .. } => format!("Not({})", child.stringify()),
+            ConstraintExpr::Intersection { children, .. } => format!(
                 "Intersection({})",
                 children
                     .iter()
@@ -354,7 +378,7 @@ where
                     .collect::<Vec<_>>()
                     .join(" ∩ ")
             ),
-            ConstraintExpr::Union { children } => format!(
+            ConstraintExpr::Union { children, .. } => format!(
                 "Union({})",
                 children
                     .iter()
