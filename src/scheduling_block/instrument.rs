@@ -97,8 +97,8 @@ where
         &self.id
     }
 
-    fn name(&self) -> String {
-        self.name.clone()
+    fn name(&self) -> &str {
+        &self.name
     }
 
     fn constraints(&self) -> Option<&ConstraintExpr<Self::ConstraintLeaf>> {

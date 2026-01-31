@@ -60,7 +60,7 @@ pub trait Task<A: Unit>: Send + Sync + Debug + 'static {
     type ConstraintLeaf: Constraint<A>;
 
     fn id(&self) -> &str;
-    fn name(&self) -> String;
+    fn name(&self) -> &str;
 
     /// Returns the task's duration in its natural unit (`SizeUnit`).
     fn size(&self) -> Quantity<Self::SizeUnit>;

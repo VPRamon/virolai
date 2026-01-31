@@ -33,8 +33,8 @@ impl Task<Second> for SimpleTask {
         &self.id
     }
 
-    fn name(&self) -> String {
-        self.name.clone()
+    fn name(&self) -> &str {
+        &self.name
     }
 
     fn size(&self) -> Quantity<Second> {

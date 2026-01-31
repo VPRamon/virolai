@@ -54,7 +54,7 @@ use qtty::Unit;
 ///     type ConstraintLeaf = MyConstraintLeaf;
 ///
 ///     fn id(&self) -> &str { &self.name }
-///     fn name(&self) -> String { self.name.clone() }
+///     fn name(&self) -> &str { &self.name }
 ///
 ///     fn constraints(&self) -> Option<&ConstraintExpr<Self::ConstraintLeaf>> {
 ///         Some(&self.constraint)
@@ -69,7 +69,7 @@ pub trait Resource<A: Unit>: Send + Sync + Debug + 'static {
     fn id(&self) -> &str;
 
     /// Returns a human-readable name for this resource.
-    fn name(&self) -> String;
+    fn name(&self) -> &str;
 
     /// Returns the resource-level constraints, if any.
     ///
