@@ -1,4 +1,13 @@
 //! Metric computation functions for task scheduling.
+//!
+//! These functions compute EST (Earliest Start Time), deadline (Latest Start Time),
+//! and flexibility metrics for scheduling candidates. All metrics are computed against
+//! the **static scheduling horizon**, not a moving window, matching the C++ core
+//! implementation behavior.
+//!
+//! During the scheduling loop, the horizon parameter remains unchanged even as tasks
+//! are scheduled. A separate cursor variable tracks scheduling progress, but metrics
+//! are always computed relative to the original full horizon.
 
 use crate::scheduling_block::Task;
 use crate::solution_space::{Interval, SolutionSpace};
@@ -6,8 +15,18 @@ use qtty::{Quantity, Unit};
 
 /// Finds the earliest start time for a task in the solution space.
 ///
-/// Searches through visibility windows that intersect with the horizon,
+/// Searches through visibility windows that intersect with the **static horizon**,
 /// returning the start of the first window where the task fits.
+///
+/// # Arguments
+///
+/// * `task` - The task to schedule
+/// * `solution_space` - Pre-computed visibility windows for all tasks
+/// * `horizon` - The static scheduling horizon (unchanged throughout scheduling)
+///
+/// # Returns
+///
+/// The earliest possible start time, or None if the task cannot fit.
 ///
 /// Note: Uses `task.size_on_axis()` to get the duration in axis units.
 pub fn compute_est<T, A>(
@@ -47,8 +66,18 @@ where
 
 /// Finds the latest possible start time (deadline) for a task.
 ///
-/// Searches backwards through visibility windows that intersect with the horizon,
+/// Searches backwards through visibility windows that intersect with the **static horizon**,
 /// returning the latest time the task can start and still fit.
+///
+/// # Arguments
+///
+/// * `task` - The task to schedule
+/// * `solution_space` - Pre-computed visibility windows for all tasks
+/// * `horizon` - The static scheduling horizon (unchanged throughout scheduling)
+///
+/// # Returns
+///
+/// The latest possible start time, or None if the task cannot fit.
 ///
 /// Note: Uses `task.size_on_axis()` to get the duration in axis units.
 pub fn compute_deadline<T, A>(
@@ -89,8 +118,22 @@ where
 
 /// Computes task flexibility as the ratio of available time to task duration.
 ///
-/// Sums flexibility across all visibility windows that intersect with the horizon.
+/// Sums flexibility across all visibility windows that intersect with the **static horizon**.
 /// Assumes non-overlapping visibility windows.
+///
+/// The flexibility metric indicates how many times the task could theoretically fit
+/// within its available windows. A flexibility < 1.0 means the task is impossible.
+/// A flexibility < endangered_threshold means the task is endangered.
+///
+/// # Arguments
+///
+/// * `task` - The task to schedule
+/// * `solution_space` - Pre-computed visibility windows for all tasks
+/// * `horizon` - The static scheduling horizon (unchanged throughout scheduling)
+///
+/// # Returns
+///
+/// The flexibility value (dimensionless ratio).
 ///
 /// Note: Uses `task.size_on_axis()` to get the duration in axis units.
 pub fn compute_flexibility<T, A>(

@@ -79,4 +79,30 @@ pub trait Task<A: Unit>: Send + Sync + Debug + 'static {
     fn constraints(&self) -> Option<&ConstraintExpr<Self::ConstraintLeaf>> {
         None
     }
+
+    /// Returns the required delay after this task completes.
+    ///
+    /// This delay is added to the cursor when advancing the scheduling timeline,
+    /// ensuring proper spacing between tasks (e.g., telescope reconfiguration time).
+    ///
+    /// Default implementation returns zero (no delay).
+    fn delay_after(&self) -> Quantity<A> {
+        Quantity::new(0.0)
+    }
+
+    /// Computes the required delay between this task and a subsequent task.
+    ///
+    /// This is used in cross-kind ordering comparisons to determine if a flexible
+    /// task would block an endangered task due to required inter-task delays.
+    ///
+    /// # Arguments
+    ///
+    /// * `previous_task` - The task that would execute before this one
+    ///
+    /// # Returns
+    ///
+    /// The required delay in axis units. Default implementation returns zero.
+    fn compute_delay_after(&self, _previous_task: &Self) -> Quantity<A> {
+        Quantity::new(0.0)
+    }
 }

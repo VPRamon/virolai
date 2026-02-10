@@ -42,13 +42,15 @@ where
     }
 
     /// Returns true if the task is endangered (low flexibility).
+    /// Uses strict less-than to match C++ core implementation.
     pub fn is_endangered(&self, threshold: u32) -> bool {
-        !self.is_impossible() && self.flexibility.value() <= threshold as f64
+        !self.is_impossible() && self.flexibility.value() < threshold as f64
     }
 
     /// Returns true if the task is flexible (high flexibility).
+    /// Uses greater-than-or-equal to match C++ core implementation.
     pub fn is_flexible(&self, threshold: u32) -> bool {
-        !self.is_impossible() && self.flexibility.value() > threshold as f64
+        !self.is_impossible() && self.flexibility.value() >= threshold as f64
     }
 
     /// Get the scheduling period for this candidate (in axis units).

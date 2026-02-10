@@ -53,6 +53,8 @@ where
 
 /// Compares endangered vs flexible candidates.
 /// Flexible goes first iff it starts before the endangered and doesn't block it.
+///
+/// This implementation accounts for inter-task delays to match C++ core behavior.
 pub fn compare_endangered_flexible<T, U>(
     endangered: &Candidate<T, U>,
     flexible: &Candidate<T, U>,
@@ -70,11 +72,13 @@ where
         }
 
         // Check if scheduling flexible first would block endangered
-        // Use size_on_axis() to get duration in the scheduling axis unit
+        // Account for inter-task delay between flexible and endangered
         let flexible_end = est_f + flexible.task().size_on_axis();
+        let required_delay = endangered.task().compute_delay_after(flexible.task());
+        let endangered_start_after_flexible = flexible_end + required_delay;
 
-        // If flexible ends before endangered's deadline, flexible can go first
-        if flexible_end.value() <= deadline_e.value() {
+        // If endangered can still start before its deadline, flexible can go first
+        if endangered_start_after_flexible.value() <= deadline_e.value() {
             return Ordering::Greater; // Flexible goes first
         }
     }
