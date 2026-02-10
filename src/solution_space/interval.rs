@@ -41,6 +41,26 @@ impl<U: Unit> Interval<U> {
         self.end - self.start
     }
 
+    /// Converts this interval to another unit of the same dimension.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use qtty::{Second, Day};
+    /// use vrolai::solution_space::Interval;
+    ///
+    /// let interval_sec = Interval::<Second>::new(
+    ///     Quantity::<Second>::new(0.0),
+    ///     Quantity::<Second>::new(86400.0)
+    /// );
+    /// let interval_day: Interval<Day> = interval_sec.to();
+    /// assert!((interval_day.start().value() - 0.0).abs() < 1e-12);
+    /// assert!((interval_day.end().value() - 1.0).abs() < 1e-12);
+    /// ```
+    pub fn to<T: Unit<Dim = U::Dim>>(self) -> Interval<T> {
+        Interval::new(self.start.to(), self.end.to())
+    }
+
     /// Returns true if `position` ∈ `[start, end]`.
     pub const fn contains(&self, position: Quantity<U>) -> bool {
         self.start.value() <= position.value() && position.value() <= self.end.value()
@@ -122,7 +142,7 @@ impl<'de, U: Unit> serde::Deserialize<'de> for Interval<U> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use qtty::Second;
+    use qtty::{Second, Day};
 
     #[test]
     fn test_interval_creation() {
@@ -130,6 +150,18 @@ mod tests {
         assert_eq!(interval.duration().value(), 100.0);
         assert_eq!(interval.start().value(), 0.0);
         assert_eq!(interval.end().value(), 100.0);
+    }
+
+    #[test]
+    fn test_interval_to_conversion() {
+        let interval_sec = Interval::new(
+            Quantity::<Second>::new(0.0),
+            Quantity::<Second>::new(86400.0)
+        );
+        let interval_day: Interval<Day> = interval_sec.to();
+        assert!((interval_day.start().value() - 0.0).abs() < 1e-12);
+        assert!((interval_day.end().value() - 1.0).abs() < 1e-12);
+        assert!((interval_day.duration().value() - 1.0).abs() < 1e-12);
     }
 
     #[test]
