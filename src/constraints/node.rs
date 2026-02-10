@@ -137,7 +137,8 @@ impl<C> ConstraintExpr<C> {
         match self {
             ConstraintExpr::Leaf(_) => 1,
             ConstraintExpr::Not { type_: _, child } => 1 + child.depth(),
-            ConstraintExpr::Intersection { type_: _, children } | ConstraintExpr::Union { type_: _, children } => {
+            ConstraintExpr::Intersection { type_: _, children }
+            | ConstraintExpr::Union { type_: _, children } => {
                 1 + children.iter().map(|c| c.depth()).max().unwrap_or(0)
             }
         }
@@ -148,7 +149,8 @@ impl<C> ConstraintExpr<C> {
         match self {
             ConstraintExpr::Leaf(_) => 1,
             ConstraintExpr::Not { type_: _, child } => 1 + child.node_count(),
-            ConstraintExpr::Intersection { type_: _, children } | ConstraintExpr::Union { type_: _, children } => {
+            ConstraintExpr::Intersection { type_: _, children }
+            | ConstraintExpr::Union { type_: _, children } => {
                 1 + children.iter().map(|c| c.node_count()).sum::<usize>()
             }
         }
@@ -159,7 +161,8 @@ impl<C> ConstraintExpr<C> {
         match self {
             ConstraintExpr::Leaf(_) => 1,
             ConstraintExpr::Not { type_: _, child } => child.leaf_count(),
-            ConstraintExpr::Intersection { type_: _, children } | ConstraintExpr::Union { type_: _, children } => {
+            ConstraintExpr::Intersection { type_: _, children }
+            | ConstraintExpr::Union { type_: _, children } => {
                 children.iter().map(|c| c.leaf_count()).sum()
             }
         }
@@ -169,9 +172,8 @@ impl<C> ConstraintExpr<C> {
     pub fn children(&self) -> Option<&[ConstraintExpr<C>]> {
         match self {
             ConstraintExpr::Leaf(_) | ConstraintExpr::Not { .. } => None,
-            ConstraintExpr::Intersection { children, .. } | ConstraintExpr::Union { children, .. } => {
-                Some(children)
-            }
+            ConstraintExpr::Intersection { children, .. }
+            | ConstraintExpr::Union { children, .. } => Some(children),
         }
     }
 
@@ -179,9 +181,8 @@ impl<C> ConstraintExpr<C> {
     pub fn children_mut(&mut self) -> Option<&mut Vec<ConstraintExpr<C>>> {
         match self {
             ConstraintExpr::Leaf(_) | ConstraintExpr::Not { .. } => None,
-            ConstraintExpr::Intersection { type_: _, children } | ConstraintExpr::Union { type_: _, children } => {
-                Some(children)
-            }
+            ConstraintExpr::Intersection { type_: _, children }
+            | ConstraintExpr::Union { type_: _, children } => Some(children),
         }
     }
 
@@ -194,7 +195,8 @@ impl<C> ConstraintExpr<C> {
         match self {
             ConstraintExpr::Leaf(_) => {}
             ConstraintExpr::Not { type_: _, child } => child.visit_preorder(visitor),
-            ConstraintExpr::Intersection { type_: _, children } | ConstraintExpr::Union { type_: _, children } => {
+            ConstraintExpr::Intersection { type_: _, children }
+            | ConstraintExpr::Union { type_: _, children } => {
                 for child in children {
                     child.visit_preorder(visitor);
                 }
@@ -210,7 +212,8 @@ impl<C> ConstraintExpr<C> {
         match self {
             ConstraintExpr::Leaf(constraint) => visitor(constraint),
             ConstraintExpr::Not { type_: _, child } => child.visit_leaves(visitor),
-            ConstraintExpr::Intersection { type_: _, children } | ConstraintExpr::Union { type_: _, children } => {
+            ConstraintExpr::Intersection { type_: _, children }
+            | ConstraintExpr::Union { type_: _, children } => {
                 for child in children {
                     child.visit_leaves(visitor);
                 }
@@ -400,14 +403,12 @@ mod tests {
 
     #[test]
     fn test_intersection_node() {
-        let child1 =
-            ConstraintExpr::leaf(IntervalConstraint::new(Interval::<Second>::from_f64(
-                0.0, 100.0,
-            )));
-        let child2 =
-            ConstraintExpr::leaf(IntervalConstraint::new(Interval::<Second>::from_f64(
-                50.0, 150.0,
-            )));
+        let child1 = ConstraintExpr::leaf(IntervalConstraint::new(Interval::<Second>::from_f64(
+            0.0, 100.0,
+        )));
+        let child2 = ConstraintExpr::leaf(IntervalConstraint::new(Interval::<Second>::from_f64(
+            50.0, 150.0,
+        )));
 
         let intersection = ConstraintExpr::intersection(vec![child1, child2]);
 
@@ -423,14 +424,12 @@ mod tests {
 
     #[test]
     fn test_union_node() {
-        let child1 =
-            ConstraintExpr::leaf(IntervalConstraint::new(Interval::<Second>::from_f64(
-                0.0, 50.0,
-            )));
-        let child2 =
-            ConstraintExpr::leaf(IntervalConstraint::new(Interval::<Second>::from_f64(
-                100.0, 150.0,
-            )));
+        let child1 = ConstraintExpr::leaf(IntervalConstraint::new(Interval::<Second>::from_f64(
+            0.0, 50.0,
+        )));
+        let child2 = ConstraintExpr::leaf(IntervalConstraint::new(Interval::<Second>::from_f64(
+            100.0, 150.0,
+        )));
 
         let union = ConstraintExpr::union(vec![child1, child2]);
 
@@ -521,14 +520,12 @@ mod tests {
 
     #[test]
     fn test_tree_structure() {
-        let child1 =
-            ConstraintExpr::leaf(IntervalConstraint::new(Interval::<Second>::from_f64(
-                0.0, 100.0,
-            )));
-        let child2 =
-            ConstraintExpr::leaf(IntervalConstraint::new(Interval::<Second>::from_f64(
-                50.0, 150.0,
-            )));
+        let child1 = ConstraintExpr::leaf(IntervalConstraint::new(Interval::<Second>::from_f64(
+            0.0, 100.0,
+        )));
+        let child2 = ConstraintExpr::leaf(IntervalConstraint::new(Interval::<Second>::from_f64(
+            50.0, 150.0,
+        )));
 
         let intersection = ConstraintExpr::intersection(vec![child1, child2]);
 

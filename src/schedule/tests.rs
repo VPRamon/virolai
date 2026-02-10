@@ -41,10 +41,7 @@ mod basic_operations {
         let mut schedule = TestSchedule::new();
         schedule.add("1", iv(0.0, 10.0)).unwrap();
         let result = schedule.add("1", iv(20.0, 30.0));
-        assert_eq!(
-            result,
-            Err(ScheduleError::DuplicateTaskId("1".to_string()))
-        );
+        assert_eq!(result, Err(ScheduleError::DuplicateTaskId("1".to_string())));
     }
 
     #[test]

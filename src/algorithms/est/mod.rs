@@ -26,15 +26,13 @@
 //!   - flexibility < threshold → endangered
 //!   - flexibility >= threshold → flexible
 //!
-//! ## 3. Scheduling Process (Static Horizon + Cursor)
+//! ## 3. Scheduling Process (Rolling Horizon + Cursor)
 //!
-//! - Initialize candidates with metrics computed against the **static scheduling horizon**
 //! - Maintain a separate **cursor** to track scheduling progress
 //! - Repeatedly:
 //!   1. Schedule the highest-priority candidate at its EST
 //!   2. Advance cursor by: `task.end() + task.delay_after()`
-//!   3. Partial update: re-compute metrics only for candidates before next endangered task
-//!   4. Metrics are always computed against the **static horizon**, not the cursor
+//!   3. Re-compute candidate metrics on the remaining horizon `[cursor, end]`
 //! - Continue until no schedulable tasks remain or cursor exceeds horizon
 //!
 //! ## 4. Task Delays
@@ -43,19 +41,12 @@
 //! - `delay_after()`: Required delay after this task completes (added to cursor)
 //! - `compute_delay_after(previous)`: Delay between two specific tasks (used in ordering)
 //!
-//! # Differences from Earlier Versions
-//!
-//! This implementation uses a **static horizon** throughout scheduling, unlike earlier
-//! versions that moved the horizon forward. Metrics (EST, deadline, flexibility) are
-//! always computed relative to the original full horizon, while a separate cursor
-//! variable tracks actual scheduling progress. This matches the C++ core behavior.
-//!
 //! # Module Structure
 //!
 //! - [`candidate`] - Task candidate with computed metrics
 //! - [`metrics`] - Metric computation functions (EST, deadline, flexibility)
 //! - [`ordering`] - Candidate comparison and priority logic
-//! - [`engine`] - Core scheduling loop with partial update optimization
+//! - [`engine`] - Core scheduling loop and candidate updates
 
 mod candidate;
 mod engine;
@@ -69,7 +60,7 @@ use crate::solution_space::SolutionSpace;
 use qtty::Unit;
 
 use candidate::Candidate;
-use engine::{schedule_segment, update_candidates};
+use engine::schedule_segment;
 
 /// Early Starting Time scheduler.
 pub struct ESTScheduler {
@@ -111,7 +102,7 @@ where
         let mut schedule = Schedule::new();
 
         // Collect all tasks from all blocks
-        let mut candidates: Vec<Candidate<T, U>> = blocks
+        let candidates: Vec<Candidate<T, U>> = blocks
             .iter()
             .flat_map(|block| {
                 block
@@ -120,14 +111,6 @@ where
                     .map(|task| Candidate::new(task.clone()))
             })
             .collect();
-
-        // Initial update
-        update_candidates(
-            &mut candidates,
-            solution_space,
-            horizon,
-            self.endangered_threshold,
-        );
 
         // Schedule
         schedule_segment(
@@ -202,7 +185,7 @@ mod tests {
     fn test_endangered_threshold_boundary() {
         // Test that flexibility < threshold is endangered, >= threshold is flexible
         // This matches the C++ strict less-than behavior
-        
+
         let task = TestTask {
             id: "boundary".to_string(),
             name: "Boundary Test".to_string(),
@@ -212,27 +195,45 @@ mod tests {
         };
 
         let mut candidate = Candidate::new(task);
-        
+
         // Set EST so candidate is not impossible
         candidate.est = Some(qtty::Quantity::new(0.0));
-        
+
         let threshold = 5;
-        
+
         // flexibility = 4.9 < 5 → endangered
         candidate.flexibility = qtty::Quantity::new(4.9);
-        assert!(candidate.is_endangered(threshold), "4.9 < 5 should be endangered");
-        assert!(!candidate.is_flexible(threshold), "4.9 < 5 should not be flexible");
-        
+        assert!(
+            candidate.is_endangered(threshold),
+            "4.9 < 5 should be endangered"
+        );
+        assert!(
+            !candidate.is_flexible(threshold),
+            "4.9 < 5 should not be flexible"
+        );
+
         // flexibility = 5.0 >= 5 → flexible (boundary case)
         candidate.flexibility = qtty::Quantity::new(5.0);
-        assert!(!candidate.is_endangered(threshold), "5.0 >= 5 should not be endangered");
-        assert!(candidate.is_flexible(threshold), "5.0 >= 5 should be flexible");
-        
+        assert!(
+            !candidate.is_endangered(threshold),
+            "5.0 >= 5 should not be endangered"
+        );
+        assert!(
+            candidate.is_flexible(threshold),
+            "5.0 >= 5 should be flexible"
+        );
+
         // flexibility = 5.1 >= 5 → flexible
         candidate.flexibility = qtty::Quantity::new(5.1);
-        assert!(!candidate.is_endangered(threshold), "5.1 >= 5 should not be endangered");
-        assert!(candidate.is_flexible(threshold), "5.1 >= 5 should be flexible");
-        
+        assert!(
+            !candidate.is_endangered(threshold),
+            "5.1 >= 5 should not be endangered"
+        );
+        assert!(
+            candidate.is_flexible(threshold),
+            "5.1 >= 5 should be flexible"
+        );
+
         // flexibility < 1.0 with no EST → impossible
         candidate.flexibility = qtty::Quantity::new(0.5);
         candidate.est = None;
@@ -266,9 +267,9 @@ mod tests {
         // This test verifies that metrics are computed against a static horizon
         // We can't directly test the scheduling loop here, but we can verify
         // that the metric functions work correctly with a fixed horizon
-        
+
         use crate::solution_space::{Interval, SolutionSpace};
-        
+
         let task = TestTask {
             id: "static_test".to_string(),
             name: "Static Horizon Test".to_string(),
@@ -276,7 +277,7 @@ mod tests {
             priority: 0,
             delay: qtty::Quantity::new(0.0),
         };
-        
+
         // Create a solution space with visibility windows
         let mut solution_space = SolutionSpace::<Second>::new();
         solution_space.set_intervals(
@@ -286,23 +287,96 @@ mod tests {
                 Interval::new(qtty::Quantity::new(100.0), qtty::Quantity::new(150.0)),
             ],
         );
-        
+
         // Test with different horizons - metrics should reflect the horizon used
         let horizon1 = Interval::new(qtty::Quantity::new(0.0), qtty::Quantity::new(100.0));
         let horizon2 = Interval::new(qtty::Quantity::new(50.0), qtty::Quantity::new(200.0));
-        
+
         let est1 = metrics::compute_est(&task, &solution_space, horizon1);
         let est2 = metrics::compute_est(&task, &solution_space, horizon2);
-        
+
         // EST should differ based on horizon
-        assert_eq!(est1, Some(qtty::Quantity::new(0.0)), "EST with horizon1 should be 0");
-        assert_eq!(est2, Some(qtty::Quantity::new(100.0)), "EST with horizon2 should be 100");
+        assert_eq!(
+            est1,
+            Some(qtty::Quantity::new(0.0)),
+            "EST with horizon1 should be 0"
+        );
+        assert_eq!(
+            est2,
+            Some(qtty::Quantity::new(100.0)),
+            "EST with horizon2 should be 100"
+        );
+    }
+
+    #[test]
+    fn test_schedule_recomputes_est_from_cursor() {
+        use crate::algorithms::SchedulingAlgorithm;
+        use crate::solution_space::{Interval, SolutionSpace};
+
+        let task1 = TestTask {
+            id: "t1".to_string(),
+            name: "Task 1".to_string(),
+            size: qtty::Quantity::new(10.0),
+            priority: 1,
+            delay: qtty::Quantity::new(0.0),
+        };
+        let task2 = TestTask {
+            id: "t2".to_string(),
+            name: "Task 2".to_string(),
+            size: qtty::Quantity::new(10.0),
+            priority: 1,
+            delay: qtty::Quantity::new(0.0),
+        };
+
+        // Both tasks share one long window. Without cursor-aware recomputation,
+        // both get EST=0 and the second task is dropped due to overlap.
+        let mut solution_space = SolutionSpace::<Second>::new();
+        solution_space.set_intervals(
+            "t1".to_string(),
+            vec![Interval::new(
+                qtty::Quantity::new(0.0),
+                qtty::Quantity::new(100.0),
+            )],
+        );
+        solution_space.set_intervals(
+            "t2".to_string(),
+            vec![Interval::new(
+                qtty::Quantity::new(0.0),
+                qtty::Quantity::new(100.0),
+            )],
+        );
+
+        let horizon = Interval::new(qtty::Quantity::new(0.0), qtty::Quantity::new(100.0));
+
+        let mut block1: SchedulingBlock<TestTask, Second> = SchedulingBlock::new();
+        block1.add_task(task1);
+        let mut block2: SchedulingBlock<TestTask, Second> = SchedulingBlock::new();
+        block2.add_task(task2);
+
+        let scheduler = ESTScheduler::new(5);
+        let schedule = scheduler.schedule(&[block1, block2], &solution_space, horizon);
+
+        assert_eq!(schedule.len(), 2, "Both tasks should be scheduled");
+
+        let entries: Vec<_> = schedule.iter().collect();
+        let first = entries[0].1;
+        let second = entries[1].1;
+
+        assert!((first.start().value() - 0.0).abs() < 1e-9);
+        assert!(
+            second.start().value() > first.end().value(),
+            "Second task should start strictly after the first ends"
+        );
+        assert!(
+            second.start().value() - first.end().value() < 1e-3,
+            "Gap should only be the scheduler epsilon"
+        );
     }
 
     #[test]
     fn test_find_next_endangered_index() {
         // Test the partial update optimization helper
-        
+
         let task1 = TestTask {
             id: "1".to_string(),
             name: "Flexible 1".to_string(),
@@ -310,7 +384,7 @@ mod tests {
             priority: 0,
             delay: qtty::Quantity::new(0.0),
         };
-        
+
         let task2 = TestTask {
             id: "2".to_string(),
             name: "Endangered".to_string(),
@@ -318,7 +392,7 @@ mod tests {
             priority: 0,
             delay: qtty::Quantity::new(0.0),
         };
-        
+
         let task3 = TestTask {
             id: "3".to_string(),
             name: "Flexible 2".to_string(),
@@ -326,29 +400,29 @@ mod tests {
             priority: 0,
             delay: qtty::Quantity::new(0.0),
         };
-        
+
         let mut candidates = vec![
             Candidate::new(task1),
             Candidate::new(task2),
             Candidate::new(task3),
         ];
-        
+
         // Set EST for all candidates so they're not impossible
         candidates[0].est = Some(qtty::Quantity::new(0.0));
         candidates[1].est = Some(qtty::Quantity::new(10.0));
         candidates[2].est = Some(qtty::Quantity::new(20.0));
-        
+
         // Set flexibility values
         candidates[0].flexibility = qtty::Quantity::new(10.0); // Flexible
-        candidates[1].flexibility = qtty::Quantity::new(2.0);  // Endangered (< 5)
-        candidates[2].flexibility = qtty::Quantity::new(8.0);  // Flexible
-        
+        candidates[1].flexibility = qtty::Quantity::new(2.0); // Endangered (< 5)
+        candidates[2].flexibility = qtty::Quantity::new(8.0); // Flexible
+
         let threshold = 5;
-        
+
         // Find next endangered - should be at index 1
         let next_endangered = find_next_endangered_index(&candidates, threshold);
         assert_eq!(next_endangered, 1, "Next endangered should be at index 1");
-        
+
         // If no endangered tasks, should return len()
         candidates[1].flexibility = qtty::Quantity::new(10.0); // Make all flexible
         let next_endangered = find_next_endangered_index(&candidates, threshold);

@@ -407,7 +407,9 @@ mod serde_impl {
                 type Value = ScheduleEntryIn<U>;
 
                 fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    formatter.write_str("a schedule entry object with 'task' (or 'task_id') and 'interval' fields")
+                    formatter.write_str(
+                        "a schedule entry object with 'task' (or 'task_id') and 'interval' fields",
+                    )
                 }
 
                 fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
