@@ -21,9 +21,9 @@ pub fn update_candidates<T, U>(
 {
     // Update metrics for all candidates
     for candidate in candidates.iter_mut() {
-        candidate.flexibility = compute_flexibility(&candidate.task, solution_space, horizon);
-        candidate.est = compute_est(&candidate.task, solution_space, horizon);
-        candidate.deadline = compute_deadline(&candidate.task, solution_space, horizon);
+        candidate.flexibility = compute_flexibility(&candidate.task, &candidate.task_id, solution_space, horizon);
+        candidate.est = compute_est(&candidate.task, &candidate.task_id, solution_space, horizon);
+        candidate.deadline = compute_deadline(&candidate.task, &candidate.task_id, solution_space, horizon);
     }
 
     // Sort candidates

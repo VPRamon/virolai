@@ -1,9 +1,11 @@
 use super::error::SchedulingError;
 use super::task::Task;
+use crate::Id;
 use petgraph::algo::{has_path_connecting, toposort};
 use petgraph::stable_graph::StableGraph;
 use petgraph::{Directed, Direction, EdgeType};
 use qtty::{Quantity, Second, Unit};
+use std::collections::HashMap;
 use std::fmt::Display;
 
 /// DAG-based task scheduler with dependency tracking.
@@ -30,6 +32,10 @@ where
     E: EdgeType,
 {
     graph: StableGraph<T, D, E>,
+    /// Maps node index → auto-generated unique ID.
+    id_by_node: HashMap<petgraph::graph::NodeIndex, Id>,
+    /// Maps ID → node index for reverse lookup.
+    node_by_id: HashMap<Id, petgraph::graph::NodeIndex>,
     _phantom: std::marker::PhantomData<U>,
 }
 
@@ -42,6 +48,8 @@ where
     fn default() -> Self {
         Self {
             graph: StableGraph::default(),
+            id_by_node: HashMap::new(),
+            node_by_id: HashMap::new(),
             _phantom: std::marker::PhantomData,
         }
     }
@@ -56,12 +64,56 @@ where
     pub fn new() -> Self {
         Self {
             graph: StableGraph::default(),
+            id_by_node: HashMap::new(),
+            node_by_id: HashMap::new(),
             _phantom: std::marker::PhantomData,
         }
     }
 
-    pub fn add_task(&mut self, task: T) -> petgraph::graph::NodeIndex {
-        self.graph.add_node(task)
+    /// Adds a task and returns a unique auto-generated ID for it.
+    pub fn add_task(&mut self, task: T) -> Id {
+        self.add_task_with_id(task, None)
+    }
+
+    /// Adds a task with a custom ID, or generates one if None is provided.
+    /// Returns the ID that was used (either provided or generated).
+    pub fn add_task_with_id(&mut self, task: T, id: Option<Id>) -> Id {
+        let id = id.unwrap_or_else(|| crate::generate_id());
+        let node = self.graph.add_node(task);
+        self.id_by_node.insert(node, id.clone());
+        self.node_by_id.insert(id.clone(), node);
+        id
+    }
+
+    /// Returns the auto-generated ID for a node index, if it exists.
+    pub fn id_of(&self, node: petgraph::graph::NodeIndex) -> Option<&str> {
+        self.id_by_node.get(&node).map(|s| s.as_str())
+    }
+
+    /// Returns the node index for a task ID, if it exists.
+    pub fn node_of(&self, id: &str) -> Option<petgraph::graph::NodeIndex> {
+        self.node_by_id.get(id).copied()
+    }
+
+    /// Returns a reference to the task with the given ID.
+    pub fn task_by_id(&self, id: &str) -> Option<&T> {
+        self.node_by_id.get(id).and_then(|&n| self.graph.node_weight(n))
+    }
+
+    /// Returns a mutable reference to the task with the given ID.
+    pub fn task_by_id_mut(&mut self, id: &str) -> Option<&mut T> {
+        if let Some(&n) = self.node_by_id.get(id) {
+            self.graph.node_weight_mut(n)
+        } else {
+            None
+        }
+    }
+
+    /// Returns an iterator over `(Id, &Task)` pairs.
+    pub fn tasks(&self) -> impl Iterator<Item = (&str, &T)> {
+        self.id_by_node.iter().filter_map(move |(node, id)| {
+            self.graph.node_weight(*node).map(|t| (id.as_str(), t))
+        })
     }
 
     /// Adds dependency edge `from` → `to`.

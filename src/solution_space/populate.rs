@@ -11,7 +11,7 @@ use std::collections::HashMap;
 ///
 /// This is a utility function that collects all constraint-computed intervals
 /// from multiple blocks into a single vector for analysis purposes.
-pub fn collect_task_intervals<T, U, D, E>(
+pub fn collect_intervals<T, U, D, E>(
     blocks: &[SchedulingBlock<T, U, D, E>],
     start: Quantity<U>,
     end: Quantity<U>,
@@ -24,13 +24,11 @@ where
     let mut intervals = Vec::new();
 
     for block in blocks {
-        for node_idx in block.graph().node_indices() {
-            if let Some(task) = block.get_task(node_idx) {
-                if let Some(constraint_tree) = task.constraints() {
-                    let task_intervals =
-                        constraint_tree.compute_intervals(Interval::new(start, end));
-                    intervals.extend(task_intervals);
-                }
+        for (_id, task) in block.tasks() {
+            if let Some(constraint_tree) = task.constraints() {
+                let task_intervals =
+                    constraint_tree.compute_intervals(Interval::new(start, end));
+                intervals.extend(task_intervals);
             }
         }
     }
@@ -84,13 +82,8 @@ impl<U: Unit> super::SolutionSpace<U> {
     {
         let map = blocks
             .iter()
-            .flat_map(|block| {
-                block
-                    .graph()
-                    .node_indices()
-                    .filter_map(|i| block.get_task(i))
-            })
-            .map(|task| {
+            .flat_map(|block| block.tasks())
+            .map(|(id, task)| {
                 // Use size_on_axis() to get duration in axis units
                 let task_size = task.size_on_axis();
                 let intervals = task.constraints().map_or_else(
@@ -102,7 +95,7 @@ impl<U: Unit> super::SolutionSpace<U> {
                             .collect()
                     },
                 );
-                (task.id().to_owned(), intervals)
+                (id.to_owned(), intervals)
             })
             .collect::<HashMap<Id, Vec<Interval<U>>>>();
 

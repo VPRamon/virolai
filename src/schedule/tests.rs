@@ -299,7 +299,7 @@ mod iterators {
         schedule.add("2", iv(20.0, 30.0)).unwrap();
         schedule.add("3", iv(40.0, 50.0)).unwrap();
 
-        let mut ids: Vec<_> = schedule.task_ids().collect();
+        let mut ids: Vec<_> = schedule.ids().collect();
         ids.sort();
         assert_eq!(ids, vec!["1".to_string(), "2".to_string(), "3".to_string()]);
     }

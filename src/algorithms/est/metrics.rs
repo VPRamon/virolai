@@ -21,6 +21,7 @@ use qtty::{Quantity, Unit};
 /// # Arguments
 ///
 /// * `task` - The task to schedule
+/// * `task_id` - The unique ID for the task
 /// * `solution_space` - Pre-computed visibility windows for all tasks
 /// * `horizon` - The static scheduling horizon (unchanged throughout scheduling)
 ///
@@ -31,6 +32,7 @@ use qtty::{Quantity, Unit};
 /// Note: Uses `task.size_on_axis()` to get the duration in axis units.
 pub fn compute_est<T, A>(
     task: &T,
+    task_id: &str,
     solution_space: &SolutionSpace<A>,
     horizon: Interval<A>,
 ) -> Option<Quantity<A>>
@@ -38,7 +40,7 @@ where
     T: Task<A>,
     A: Unit,
 {
-    let intervals = solution_space.get_intervals(task.id())?;
+    let intervals = solution_space.get_intervals(task_id)?;
     let task_size = task.size_on_axis();
 
     for interval in intervals {
@@ -72,6 +74,7 @@ where
 /// # Arguments
 ///
 /// * `task` - The task to schedule
+/// * `task_id` - The unique ID for the task
 /// * `solution_space` - Pre-computed visibility windows for all tasks
 /// * `horizon` - The static scheduling horizon (unchanged throughout scheduling)
 ///
@@ -82,6 +85,7 @@ where
 /// Note: Uses `task.size_on_axis()` to get the duration in axis units.
 pub fn compute_deadline<T, A>(
     task: &T,
+    task_id: &str,
     solution_space: &SolutionSpace<A>,
     horizon: Interval<A>,
 ) -> Option<Quantity<A>>
@@ -89,7 +93,7 @@ where
     T: Task<A>,
     A: Unit,
 {
-    let intervals = solution_space.get_intervals(task.id())?;
+    let intervals = solution_space.get_intervals(task_id)?;
     let task_size = task.size_on_axis();
 
     // Search backwards from the end
@@ -128,6 +132,7 @@ where
 /// # Arguments
 ///
 /// * `task` - The task to schedule
+/// * `task_id` - The unique ID for the task
 /// * `solution_space` - Pre-computed visibility windows for all tasks
 /// * `horizon` - The static scheduling horizon (unchanged throughout scheduling)
 ///
@@ -138,6 +143,7 @@ where
 /// Note: Uses `task.size_on_axis()` to get the duration in axis units.
 pub fn compute_flexibility<T, A>(
     task: &T,
+    task_id: &str,
     solution_space: &SolutionSpace<A>,
     horizon: Interval<A>,
 ) -> Quantity<A>
@@ -145,7 +151,7 @@ where
     T: Task<A>,
     A: Unit,
 {
-    let intervals = solution_space.get_intervals(task.id());
+    let intervals = solution_space.get_intervals(task_id);
     if intervals.is_none() {
         return Quantity::new(0.0);
     }

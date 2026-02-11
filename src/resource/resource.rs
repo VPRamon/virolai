@@ -1,14 +1,4 @@
-//! Resource abstraction for instrument-level constraints.
-//!
-//! Resources represent shared scheduling constraints that apply across multiple tasks,
-//! such as observatory-level constraints (nighttime, moon altitude) that are computed
-//! once and then intersected with each task's solution space.
-//!
-//! # Motivation
-//!
-//! Instead of duplicating instrument constraints (like "astronomical night") on every task,
-//! we compute them once at the resource level and intersect task windows with the
-//! resource's availability windows.
+//! Resource trait definition.
 
 use std::fmt::Debug;
 
@@ -41,7 +31,7 @@ use qtty::Unit;
 /// # Example
 ///
 /// ```ignore
-/// use vrolai::scheduling_block::Resource;
+/// use vrolai::resource::Resource;
 /// use vrolai::solution_space::Interval;
 /// use qtty::Day;
 ///
@@ -53,7 +43,6 @@ use qtty::Unit;
 /// impl Resource<Day> for Telescope {
 ///     type ConstraintLeaf = MyConstraintLeaf;
 ///
-///     fn id(&self) -> &str { &self.name }
 ///     fn name(&self) -> &str { &self.name }
 ///
 ///     fn constraints(&self) -> Option<&ConstraintExpr<Self::ConstraintLeaf>> {
@@ -64,9 +53,6 @@ use qtty::Unit;
 pub trait Resource<A: Unit>: Send + Sync + Debug + 'static {
     /// The leaf constraint type used in constraint trees.
     type ConstraintLeaf: Constraint<A>;
-
-    /// Returns a unique identifier for this resource.
-    fn id(&self) -> &str;
 
     /// Returns a human-readable name for this resource.
     fn name(&self) -> &str;

@@ -24,12 +24,11 @@ where
     T: Task<A>,
     A: Unit,
 {
-    /// Creates a new candidate with uninitialized metrics.
-    pub fn new(task: T) -> Self {
-        let task_id = task.id().to_owned();
+    /// Creates a new candidate with the given task and ID.
+    pub fn new(task: T, task_id: impl Into<Id>) -> Self {
         Self {
             task,
-            task_id,
+            task_id: task_id.into(),
             est: None,
             deadline: None,
             flexibility: Quantity::new(0.0),

@@ -59,7 +59,6 @@ pub trait Task<A: Unit>: Send + Sync + Debug + 'static {
     /// The leaf constraint type used in constraint trees.
     type ConstraintLeaf: Constraint<A>;
 
-    fn id(&self) -> &str;
     fn name(&self) -> &str;
 
     /// Returns the task's duration in its natural unit (`SizeUnit`).

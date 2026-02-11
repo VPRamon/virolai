@@ -105,10 +105,7 @@ where
         let candidates: Vec<Candidate<T, U>> = blocks
             .iter()
             .flat_map(|block| {
-                block
-                    .graph()
-                    .node_weights()
-                    .map(|task| Candidate::new(task.clone()))
+                block.tasks().map(|(id, task)| Candidate::new(task.clone(), id))
             })
             .collect();
 
@@ -134,7 +131,6 @@ mod tests {
 
     #[derive(Debug, Clone)]
     struct TestTask {
-        id: String,
         name: String,
         size: qtty::Quantity<Second>,
         priority: i32,
@@ -144,10 +140,6 @@ mod tests {
     impl Task<Second> for TestTask {
         type SizeUnit = Second;
         type ConstraintLeaf = IntervalConstraint<Second>;
-
-        fn id(&self) -> &str {
-            &self.id
-        }
 
         fn name(&self) -> &str {
             &self.name
@@ -169,15 +161,14 @@ mod tests {
     #[test]
     fn test_candidate_creation() {
         let task = TestTask {
-            id: "1".to_string(),
             name: "Test".to_string(),
             size: qtty::Quantity::new(10.0),
             priority: 5,
             delay: qtty::Quantity::new(0.0),
         };
 
-        let candidate = Candidate::new(task.clone());
-        assert_eq!(candidate.task_id(), "1");
+        let candidate = Candidate::new(task.clone(), "test-id");
+        assert_eq!(candidate.task_id(), "test-id");
         assert!(candidate.is_impossible());
     }
 
@@ -187,14 +178,13 @@ mod tests {
         // This matches the C++ strict less-than behavior
 
         let task = TestTask {
-            id: "boundary".to_string(),
             name: "Boundary Test".to_string(),
             size: qtty::Quantity::new(10.0),
             priority: 0,
             delay: qtty::Quantity::new(0.0),
         };
 
-        let mut candidate = Candidate::new(task);
+        let mut candidate =Candidate::new(task, "boundary");
 
         // Set EST so candidate is not impossible
         candidate.est = Some(qtty::Quantity::new(0.0));
@@ -243,7 +233,6 @@ mod tests {
     #[test]
     fn test_task_delay_after() {
         let task_with_delay = TestTask {
-            id: "delayed".to_string(),
             name: "Delayed Task".to_string(),
             size: qtty::Quantity::new(10.0),
             priority: 0,
@@ -251,7 +240,6 @@ mod tests {
         };
 
         let task_no_delay = TestTask {
-            id: "nodelay".to_string(),
             name: "No Delay Task".to_string(),
             size: qtty::Quantity::new(10.0),
             priority: 0,
@@ -271,7 +259,6 @@ mod tests {
         use crate::solution_space::{Interval, SolutionSpace};
 
         let task = TestTask {
-            id: "static_test".to_string(),
             name: "Static Horizon Test".to_string(),
             size: qtty::Quantity::new(10.0),
             priority: 0,
@@ -292,8 +279,8 @@ mod tests {
         let horizon1 = Interval::new(qtty::Quantity::new(0.0), qtty::Quantity::new(100.0));
         let horizon2 = Interval::new(qtty::Quantity::new(50.0), qtty::Quantity::new(200.0));
 
-        let est1 = metrics::compute_est(&task, &solution_space, horizon1);
-        let est2 = metrics::compute_est(&task, &solution_space, horizon2);
+        let est1 = metrics::compute_est(&task, "static_test", &solution_space, horizon1);
+        let est2 = metrics::compute_est(&task, "static_test", &solution_space, horizon2);
 
         // EST should differ based on horizon
         assert_eq!(
@@ -314,44 +301,43 @@ mod tests {
         use crate::solution_space::{Interval, SolutionSpace};
 
         let task1 = TestTask {
-            id: "t1".to_string(),
             name: "Task 1".to_string(),
             size: qtty::Quantity::new(10.0),
             priority: 1,
             delay: qtty::Quantity::new(0.0),
         };
         let task2 = TestTask {
-            id: "t2".to_string(),
             name: "Task 2".to_string(),
-            size: qtty::Quantity::new(10.0),
+            size:qtty::Quantity::new(10.0),
             priority: 1,
             delay: qtty::Quantity::new(0.0),
         };
 
         // Both tasks share one long window. Without cursor-aware recomputation,
         // both get EST=0 and the second task is dropped due to overlap.
-        let mut solution_space = SolutionSpace::<Second>::new();
-        solution_space.set_intervals(
-            "t1".to_string(),
-            vec![Interval::new(
-                qtty::Quantity::new(0.0),
-                qtty::Quantity::new(100.0),
-            )],
-        );
-        solution_space.set_intervals(
-            "t2".to_string(),
-            vec![Interval::new(
-                qtty::Quantity::new(0.0),
-                qtty::Quantity::new(100.0),
-            )],
-        );
-
+        
         let horizon = Interval::new(qtty::Quantity::new(0.0), qtty::Quantity::new(100.0));
 
         let mut block1: SchedulingBlock<TestTask, Second> = SchedulingBlock::new();
-        block1.add_task(task1);
+        let task1_id = block1.add_task(task1);
         let mut block2: SchedulingBlock<TestTask, Second> = SchedulingBlock::new();
-        block2.add_task(task2);
+        let task2_id = block2.add_task(task2);
+
+        let mut solution_space = SolutionSpace::<Second>::new();
+        solution_space.set_intervals(
+            task1_id,
+            vec![Interval::new(
+                qtty::Quantity::new(0.0),
+                qtty::Quantity::new(100.0),
+            )],
+        );
+        solution_space.set_intervals(
+            task2_id,
+            vec![Interval::new(
+                qtty::Quantity::new(0.0),
+                qtty::Quantity::new(100.0),
+            )],
+        );
 
         let scheduler = ESTScheduler::new(5);
         let schedule = scheduler.schedule(&[block1, block2], &solution_space, horizon);
@@ -378,7 +364,6 @@ mod tests {
         // Test the partial update optimization helper
 
         let task1 = TestTask {
-            id: "1".to_string(),
             name: "Flexible 1".to_string(),
             size: qtty::Quantity::new(10.0),
             priority: 0,
@@ -386,7 +371,6 @@ mod tests {
         };
 
         let task2 = TestTask {
-            id: "2".to_string(),
             name: "Endangered".to_string(),
             size: qtty::Quantity::new(10.0),
             priority: 0,
@@ -394,7 +378,6 @@ mod tests {
         };
 
         let task3 = TestTask {
-            id: "3".to_string(),
             name: "Flexible 2".to_string(),
             size: qtty::Quantity::new(10.0),
             priority: 0,
@@ -402,9 +385,9 @@ mod tests {
         };
 
         let mut candidates = vec![
-            Candidate::new(task1),
-            Candidate::new(task2),
-            Candidate::new(task3),
+            Candidate::new(task1, "1"),
+            Candidate::new(task2, "2"),
+            Candidate::new(task3, "3"),
         ];
 
         // Set EST for all candidates so they're not impossible

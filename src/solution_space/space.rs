@@ -45,33 +45,33 @@ impl<U: Unit> SolutionSpace<U> {
         Self(HashMap::with_capacity(capacity))
     }
 
-    /// Adds an interval for a specific task ID.
-    pub fn add_interval(&mut self, task_id: impl Into<Id>, interval: Interval<U>) {
-        self.0.entry(task_id.into()).or_default().push(interval);
+    /// Adds an interval for a specific ID.
+    pub fn add_interval(&mut self, id: impl Into<Id>, interval: Interval<U>) {
+        self.0.entry(id.into()).or_default().push(interval);
     }
 
-    /// Adds multiple intervals for a specific task ID (automatically normalized).
-    pub fn add_intervals(&mut self, task_id: impl Into<Id>, intervals: Vec<Interval<U>>) {
-        self.0.entry(task_id.into()).or_default().extend(intervals);
+    /// Adds multiple intervals for a specific ID (automatically normalized).
+    pub fn add_intervals(&mut self, id: impl Into<Id>, intervals: Vec<Interval<U>>) {
+        self.0.entry(id.into()).or_default().extend(intervals);
     }
 
-    /// Sets the intervals for a specific task ID, replacing any existing intervals (automatically normalized).
-    pub fn set_intervals(&mut self, task_id: impl Into<Id>, intervals: Vec<Interval<U>>) {
-        self.0.insert(task_id.into(), intervals);
+    /// Sets the intervals for a specific ID, replacing any existing intervals (automatically normalized).
+    pub fn set_intervals(&mut self, id: impl Into<Id>, intervals: Vec<Interval<U>>) {
+        self.0.insert(id.into(), intervals);
     }
 
-    /// Returns intervals for a specific task ID.
-    pub fn get_intervals(&self, task_id: &str) -> Option<&[Interval<U>]> {
-        self.0.get(task_id).map(|v| v.as_slice())
+    /// Returns intervals for a specific ID.
+    pub fn get_intervals(&self, id: &str) -> Option<&[Interval<U>]> {
+        self.0.get(id).map(|v| v.as_slice())
     }
 
-    /// Returns task IDs that have intervals defined.
-    pub fn task_ids(&self) -> impl Iterator<Item = &str> + '_ {
+    /// Returns IDs that have intervals defined.
+    pub fn ids(&self) -> impl Iterator<Item = &str> + '_ {
         self.0.keys().map(|k| k.as_str())
     }
 
-    /// Returns total number of tasks in the solution space.
-    pub fn task_count(&self) -> usize {
+    /// Returns total number of entries in the solution space.
+    pub fn count(&self) -> usize {
         self.0.len()
     }
 
@@ -80,9 +80,9 @@ impl<U: Unit> SolutionSpace<U> {
         self.0.values().map(|v| v.len()).sum()
     }
 
-    /// Removes all intervals for a specific task ID.
-    pub fn remove_task(&mut self, task_id: &str) -> bool {
-        self.0.remove(task_id).is_some()
+    /// Removes all intervals for a specific ID.
+    pub fn remove(&mut self, id: &str) -> bool {
+        self.0.remove(id).is_some()
     }
 
     pub fn clear(&mut self) {
@@ -93,10 +93,10 @@ impl<U: Unit> SolutionSpace<U> {
         self.0.is_empty()
     }
 
-    /// Returns true if the specified task ID has any interval containing `position` (O(log m) binary search).
-    pub fn task_contains_position(&self, task_id: &str, position: Quantity<U>) -> bool {
+    /// Returns true if the specified ID has any interval containing `position` (O(log m) binary search).
+    pub fn contains_position_for(&self, id: &str, position: Quantity<U>) -> bool {
         self.0
-            .get(task_id)
+            .get(id)
             .map(|intervals| find_interval_containing_sorted(intervals, position).is_some())
             .unwrap_or(false)
     }
@@ -108,10 +108,10 @@ impl<U: Unit> SolutionSpace<U> {
             .any(|intervals| intervals.iter().any(|interval| interval.contains(position)))
     }
 
-    /// Returns true if the specified task ID can fit at `position` with given `size` (O(log m) binary search).
-    pub fn can_place_task(&self, task_id: &str, position: Quantity<U>, size: Quantity<U>) -> bool {
+    /// Returns true if the specified ID can fit at `position` with given `size` (O(log m) binary search).
+    pub fn can_place(&self, id: &str, position: Quantity<U>, size: Quantity<U>) -> bool {
         self.0
-            .get(task_id)
+            .get(id)
             .map(|intervals| {
                 find_interval_containing_sorted(intervals, position)
                     .map(|i| i.can_fit(position, size))
@@ -120,7 +120,7 @@ impl<U: Unit> SolutionSpace<U> {
             .unwrap_or(false)
     }
 
-    /// Returns true if any task can be placed at `position` with given `size`.
+    /// Returns true if any entry can be placed at `position` with given `size`.
     pub fn can_place_at(&self, position: Quantity<U>, size: Quantity<U>) -> bool {
         self.0.values().any(|intervals| {
             intervals
@@ -129,10 +129,10 @@ impl<U: Unit> SolutionSpace<U> {
         })
     }
 
-    /// Returns sum of all interval durations for a specific task ID.
-    pub fn task_capacity(&self, task_id: &str) -> Quantity<U> {
+    /// Returns sum of all interval durations for a specific ID.
+    pub fn capacity(&self, id: &str) -> Quantity<U> {
         self.0
-            .get(task_id)
+            .get(id)
             .map(|intervals| {
                 intervals
                     .iter()
@@ -142,7 +142,7 @@ impl<U: Unit> SolutionSpace<U> {
             .unwrap_or(Quantity::new(0.0))
     }
 
-    /// Returns sum of all interval durations across all tasks.
+    /// Returns sum of all interval durations across all entries.
     pub fn total_capacity(&self) -> Quantity<U> {
         self.0
             .values()
@@ -151,13 +151,13 @@ impl<U: Unit> SolutionSpace<U> {
             .fold(Quantity::new(0.0), |acc, dur| acc + dur)
     }
 
-    /// Returns start of the first interval with capacity ≥ `size` for a specific task ID.
-    pub fn find_earliest_fit_for_task(
+    /// Returns start of the first interval with capacity ≥ `size` for a specific ID.
+    pub fn find_earliest_fit_for(
         &self,
-        task_id: &str,
+        id: &str,
         size: Quantity<U>,
     ) -> Option<Quantity<U>> {
-        self.0.get(task_id).and_then(|intervals| {
+        self.0.get(id).and_then(|intervals| {
             intervals
                 .iter()
                 .find(|interval| interval.duration().value() >= size.value())
@@ -165,7 +165,7 @@ impl<U: Unit> SolutionSpace<U> {
         })
     }
 
-    /// Returns start of the first interval with capacity ≥ `size` across all tasks.
+    /// Returns start of the first interval with capacity ≥ `size` across all entries.
     pub fn find_earliest_fit(&self, size: Quantity<U>) -> Option<Quantity<U>> {
         self.0
             .values()
@@ -175,18 +175,18 @@ impl<U: Unit> SolutionSpace<U> {
             .min_by(|a, b| a.value().partial_cmp(&b.value()).unwrap())
     }
 
-    /// Returns the first interval containing `position` for a specific task ID (O(log m) binary search).
-    pub fn find_interval_containing_for_task(
+    /// Returns the first interval containing `position` for a specific ID (O(log m) binary search).
+    pub fn find_interval_containing_for(
         &self,
-        task_id: &str,
+        id: &str,
         position: Quantity<U>,
     ) -> Option<&Interval<U>> {
         self.0
-            .get(task_id)
+            .get(id)
             .and_then(|intervals| find_interval_containing_sorted(intervals, position))
     }
 
-    /// Returns the first interval containing `position` across all tasks (O(log m) per task).
+    /// Returns the first interval containing `position` across all entries (O(log m) per entry).
     pub fn find_interval_containing(&self, position: Quantity<U>) -> Option<&Interval<U>> {
         self.0
             .values()
@@ -203,22 +203,22 @@ impl<U: Unit> Default for SolutionSpace<U> {
 impl<U: Unit> Display for SolutionSpace<U> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "SolutionSpace {{")?;
-        writeln!(f, "  Tasks: {}", self.task_count())?;
+        writeln!(f, "  Entries: {}", self.count())?;
         writeln!(f, "  Total intervals: {}", self.interval_count())?;
         writeln!(f, "  Total capacity: {:.3}", self.total_capacity().value())?;
 
         if !self.0.is_empty() {
-            writeln!(f, "  Per-task breakdown:")?;
+            writeln!(f, "  Per-entry breakdown:")?;
 
-            for (task_id, intervals) in &self.0 {
+            for (id, intervals) in &self.0 {
                 let capacity: Quantity<U> = intervals
                     .iter()
                     .map(|i| i.duration())
                     .fold(Quantity::new(0.0), |acc, dur| acc + dur);
                 writeln!(
                     f,
-                    "    task_id {}: {} intervals, capacity {:.3}",
-                    task_id,
+                    "    id {}: {} intervals, capacity {:.3}",
+                    id,
                     intervals.len(),
                     capacity.value()
                 )?;
@@ -241,7 +241,6 @@ mod tests {
 
     #[derive(Debug)]
     struct TestTask {
-        id: String,
         name: String,
         size: Quantity<Second>,
         constraints: Option<ConstraintExpr<IntervalConstraint<Second>>>,
@@ -250,10 +249,6 @@ mod tests {
     impl Task<Second> for TestTask {
         type SizeUnit = Second;
         type ConstraintLeaf = IntervalConstraint<Second>;
-
-        fn id(&self) -> &str {
-            &self.id
-        }
 
         fn name(&self) -> &str {
             &self.name
@@ -272,7 +267,7 @@ mod tests {
     fn test_new_solution_space() {
         let space: SolutionSpace<Second> = SolutionSpace::new();
         assert!(space.is_empty());
-        assert_eq!(space.task_count(), 0);
+        assert_eq!(space.count(), 0);
         assert_eq!(space.interval_count(), 0);
     }
 
@@ -282,7 +277,7 @@ mod tests {
         let range = Interval::new(Quantity::<Second>::new(0.0), Quantity::<Second>::new(100.0));
 
         let solution_space = SolutionSpace::populate(&blocks, range);
-        assert_eq!(solution_space.task_count(), 0);
+        assert_eq!(solution_space.count(), 0);
         assert_eq!(solution_space.interval_count(), 0);
     }
 
@@ -290,23 +285,21 @@ mod tests {
     fn test_populate_no_constraints() {
         let mut block: SchedulingBlock<TestTask, Second> = SchedulingBlock::new();
         let task = TestTask {
-            id: "1".to_string(),
             name: "Task1".to_string(),
             size: Quantity::<Second>::new(10.0),
             constraints: None,
         };
-        let idx = block.add_task(task);
+        let task_id = block.add_task(task);
 
         let range = Interval::new(Quantity::<Second>::new(0.0), Quantity::<Second>::new(100.0));
 
         let blocks = vec![block];
         let solution_space = SolutionSpace::populate(&blocks, range);
 
-        assert_eq!(solution_space.task_count(), 1);
+        assert_eq!(solution_space.count(), 1);
         assert_eq!(solution_space.interval_count(), 1);
 
-        let task_ref = blocks[0].get_task(idx).unwrap();
-        let intervals = solution_space.get_intervals(task_ref.id()).unwrap();
+        let intervals = solution_space.get_intervals(&task_id).unwrap();
         assert_eq!(intervals.len(), 1);
         assert_eq!(intervals[0].start().value(), 0.0);
         assert_eq!(intervals[0].end().value(), 100.0);
@@ -318,23 +311,21 @@ mod tests {
 
         let constraint = IntervalConstraint::new(Interval::from_f64(10.0, 50.0));
         let task = TestTask {
-            id: "1".to_string(),
             name: "Task1".to_string(),
             size: Quantity::<Second>::new(10.0),
             constraints: Some(ConstraintExpr::leaf(constraint)),
         };
-        let idx = block.add_task(task);
+        let task_id = block.add_task(task);
 
         let range = Interval::new(Quantity::<Second>::new(0.0), Quantity::<Second>::new(100.0));
 
         let blocks = vec![block];
         let solution_space = SolutionSpace::populate(&blocks, range);
 
-        assert_eq!(solution_space.task_count(), 1);
+        assert_eq!(solution_space.count(), 1);
         assert_eq!(solution_space.interval_count(), 1);
 
-        let task_ref = blocks[0].get_task(idx).unwrap();
-        let intervals = solution_space.get_intervals(task_ref.id()).unwrap();
+        let intervals = solution_space.get_intervals(&task_id).unwrap();
         assert_eq!(intervals[0].start().value(), 10.0);
         assert_eq!(intervals[0].end().value(), 50.0);
     }
@@ -345,34 +336,30 @@ mod tests {
 
         let constraint1 = IntervalConstraint::new(Interval::<Second>::from_f64(0.0, 50.0));
         let task1 = TestTask {
-            id: "1".to_string(),
             name: "Task1".to_string(),
             size: Quantity::<Second>::new(10.0),
             constraints: Some(ConstraintExpr::leaf(constraint1)),
         };
-        let idx1 = block.add_task(task1);
+        let task1_id = block.add_task(task1);
 
         let constraint2 = IntervalConstraint::new(Interval::<Second>::from_f64(60.0, 100.0));
         let task2 = TestTask {
-            id: "2".to_string(),
             name: "Task2".to_string(),
             size: Quantity::<Second>::new(15.0),
             constraints: Some(ConstraintExpr::leaf(constraint2)),
         };
-        let idx2 = block.add_task(task2);
+        let task2_id = block.add_task(task2);
 
         let range = Interval::new(Quantity::<Second>::new(0.0), Quantity::<Second>::new(200.0));
 
         let blocks = vec![block];
         let solution_space = SolutionSpace::populate(&blocks, range);
 
-        assert_eq!(solution_space.task_count(), 2);
+        assert_eq!(solution_space.count(), 2);
         assert_eq!(solution_space.interval_count(), 2);
 
-        let task1_ref = blocks[0].get_task(idx1).unwrap();
-        let task2_ref = blocks[0].get_task(idx2).unwrap();
-        assert!(solution_space.get_intervals(task1_ref.id()).is_some());
-        assert!(solution_space.get_intervals(task2_ref.id()).is_some());
+        assert!(solution_space.get_intervals(&task1_id).is_some());
+        assert!(solution_space.get_intervals(&task2_id).is_some());
     }
 
     #[test]
@@ -380,52 +367,47 @@ mod tests {
         let mut block: SchedulingBlock<TestTask, Second> = SchedulingBlock::new();
 
         let task1 = TestTask {
-            id: "1".to_string(),
             name: "Task1".to_string(),
             size: Quantity::<Second>::new(10.0),
             constraints: None,
         };
-        let idx1 = block.add_task(task1);
+        let task1_id = block.add_task(task1);
 
         let task2 = TestTask {
-            id: "2".to_string(),
             name: "Task2".to_string(),
             size: Quantity::<Second>::new(15.0),
             constraints: None,
         };
-        let idx2 = block.add_task(task2);
+        let task2_id = block.add_task(task2);
 
         let range = Interval::new(Quantity::<Second>::new(0.0), Quantity::<Second>::new(100.0));
 
         let blocks = vec![block];
         let solution_space = SolutionSpace::populate(&blocks, range);
 
-        let task1_ref = blocks[0].get_task(idx1).unwrap();
-        let task2_ref = blocks[0].get_task(idx2).unwrap();
-
-        // Test task_contains_position
+        // Test contains_position_for
         assert!(
-            solution_space.task_contains_position(task1_ref.id(), Quantity::<Second>::new(50.0))
+            solution_space.contains_position_for(&task1_id, Quantity::<Second>::new(50.0))
         );
         assert!(
-            solution_space.task_contains_position(task2_ref.id(), Quantity::<Second>::new(50.0))
+            solution_space.contains_position_for(&task2_id, Quantity::<Second>::new(50.0))
         );
 
-        // Test can_place_task
-        assert!(solution_space.can_place_task(
-            task1_ref.id(),
+        // Test can_place
+        assert!(solution_space.can_place(
+            &task1_id,
             Quantity::<Second>::new(0.0),
             Quantity::<Second>::new(50.0)
         ));
-        assert!(!solution_space.can_place_task(
-            task1_ref.id(),
+        assert!(!solution_space.can_place(
+            &task1_id,
             Quantity::<Second>::new(60.0),
             Quantity::<Second>::new(50.0)
         ));
 
-        // Test task_capacity
-        assert_eq!(solution_space.task_capacity(task1_ref.id()).value(), 100.0);
-        assert_eq!(solution_space.task_capacity(task2_ref.id()).value(), 100.0);
+        // Test capacity
+        assert_eq!(solution_space.capacity(&task1_id).value(), 100.0);
+        assert_eq!(solution_space.capacity(&task2_id).value(), 100.0);
 
         // Test total_capacity
         assert_eq!(solution_space.total_capacity().value(), 200.0);
@@ -435,7 +417,6 @@ mod tests {
     fn test_contains_position() {
         let mut block: SchedulingBlock<TestTask, Second> = SchedulingBlock::new();
         let task = TestTask {
-            id: "1".to_string(),
             name: "Task1".to_string(),
             size: Quantity::<Second>::new(10.0),
             constraints: None,
@@ -457,16 +438,14 @@ mod tests {
 
         let constraint1 = IntervalConstraint::new(Interval::<Second>::from_f64(5000.0, 10000.0));
         let task1 = TestTask {
-            id: "1".to_string(),
             name: "Task1".to_string(),
             size: Quantity::<Second>::new(10.0),
             constraints: Some(ConstraintExpr::leaf(constraint1)),
         };
-        let idx1 = block.add_task(task1);
+        let task1_id = block.add_task(task1);
 
         let constraint2 = IntervalConstraint::new(Interval::<Second>::from_f64(0.0, 1000.0));
         let task2 = TestTask {
-            id: "2".to_string(),
             name: "Task2".to_string(),
             size: Quantity::<Second>::new(10.0),
             constraints: Some(ConstraintExpr::leaf(constraint2)),
@@ -481,10 +460,9 @@ mod tests {
         let blocks = vec![block];
         let solution_space = SolutionSpace::populate(&blocks, range);
 
-        // Test find_earliest_fit_for_task
-        let task1_ref = blocks[0].get_task(idx1).unwrap();
+        // Test find_earliest_fit_for
         let fit = solution_space
-            .find_earliest_fit_for_task(task1_ref.id(), Quantity::<Second>::new(500.0));
+            .find_earliest_fit_for(&task1_id, Quantity::<Second>::new(500.0));
         assert!(fit.is_some());
         assert_eq!(fit.unwrap().value(), 5000.0);
 

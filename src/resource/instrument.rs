@@ -7,13 +7,16 @@
 use std::fmt::Debug;
 
 use crate::constraints::{Constraint, ConstraintExpr};
-use crate::scheduling_block::Resource;
+use crate::resource::Resource;
+use crate::Id;
 use qtty::Unit;
 
 /// A generic instrument with shared constraints.
 ///
 /// Instrument provides a concrete implementation of the `Resource` trait,
 /// holding a constraint tree that applies to all tasks scheduled on it.
+/// Each instrument is assigned a unique auto-generated ID upon creation;
+/// users identify instruments by their human-readable `name`.
 ///
 /// # Type Parameters
 ///
@@ -23,20 +26,17 @@ use qtty::Unit;
 /// # Example
 ///
 /// ```ignore
-/// use vrolai::scheduling_block::Instrument;
+/// use vrolai::resource::Instrument;
 /// use qtty::Day;
 ///
-/// let telescope = Instrument::new("LST1", "La Palma Telescope")
+/// let telescope = Instrument::new("La Palma Telescope")
 ///     .with_constraint(nighttime_constraint_tree);
+///
+/// // Each instrument has an auto-generated unique ID
+/// println!("ID: {}, Name: {}", telescope.id(), telescope.name());
 ///
 /// // Compute availability once
 /// let availability = telescope.compute_availability(schedule_horizon);
-///
-/// // Intersect with each task's windows
-/// for task in tasks {
-///     let task_windows = task.compute_windows(schedule_horizon);
-///     let effective_windows = intersect_intervals(task_windows, &availability);
-/// }
 /// ```
 #[derive(Debug, Clone)]
 pub struct Instrument<A, C>
@@ -44,8 +44,8 @@ where
     A: Unit,
     C: Constraint<A>,
 {
-    /// Unique identifier for this instrument
-    id: String,
+    /// Unique auto-generated identifier for this instrument
+    id: Id,
     /// Human-readable name
     name: String,
     /// Shared constraints (nighttime, moon altitude, etc.)
@@ -59,14 +59,19 @@ where
     A: Unit,
     C: Constraint<A>,
 {
-    /// Creates a new instrument with the given ID and name.
-    pub fn new(id: impl Into<String>, name: impl Into<String>) -> Self {
+    /// Creates a new instrument with the given name and an auto-generated unique ID.
+    pub fn new(name: impl Into<String>) -> Self {
         Self {
-            id: id.into(),
+            id: crate::generate_id(),
             name: name.into(),
             constraint: None,
             _axis: std::marker::PhantomData,
         }
+    }
+
+    /// Returns the unique auto-generated identifier for this instrument.
+    pub fn id(&self) -> &str {
+        &self.id
     }
 
     /// Adds a constraint tree to this instrument.
@@ -92,10 +97,6 @@ where
     C: Constraint<A> + 'static,
 {
     type ConstraintLeaf = C;
-
-    fn id(&self) -> &str {
-        &self.id
-    }
 
     fn name(&self) -> &str {
         &self.name

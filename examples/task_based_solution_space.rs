@@ -10,7 +10,6 @@ use vrolai::solution_space::{Interval, SolutionSpace};
 
 #[derive(Debug)]
 struct MyTask {
-    id: String,
     name: String,
     size: Quantity<Second>,
     constraints: Option<ConstraintExpr<IntervalConstraint<Second>>>,
@@ -19,10 +18,6 @@ struct MyTask {
 impl Task<Second> for MyTask {
     type SizeUnit = Second;
     type ConstraintLeaf = IntervalConstraint<Second>;
-
-    fn id(&self) -> &str {
-        &self.id
-    }
 
     fn name(&self) -> &str {
         &self.name
@@ -46,7 +41,6 @@ fn main() {
 
     // Task with constraints
     let task_a = MyTask {
-        id: "1".to_string(),
         name: "TaskA".to_string(),
         size: Quantity::<Second>::new(100.0),
         constraints: Some(ConstraintExpr::leaf(IntervalConstraint::new(
@@ -56,7 +50,6 @@ fn main() {
 
     // Task without constraints - will get the full scheduling range
     let task_b = MyTask {
-        id: "2".to_string(),
         name: "TaskB".to_string(),
         size: Quantity::<Second>::new(50.0),
         constraints: None,
@@ -64,7 +57,6 @@ fn main() {
 
     // Task from another block with different constraints
     let task_c = MyTask {
-        id: "3".to_string(),
         name: "TaskC".to_string(),
         size: Quantity::<Second>::new(75.0),
         constraints: Some(ConstraintExpr::leaf(IntervalConstraint::new(
@@ -72,9 +64,9 @@ fn main() {
         ))),
     };
 
-    let _idx_a = block1.add_task(task_a);
-    let _idx_b = block1.add_task(task_b);
-    let _idx_c = block2.add_task(task_c);
+    let task_a_id = block1.add_task(task_a);
+    let task_b_id = block1.add_task(task_b);
+    let task_c_id = block2.add_task(task_c);
 
     // Populate solution space from multiple blocks
     let range = Interval::new(
@@ -86,7 +78,7 @@ fn main() {
     let solution_space = SolutionSpace::populate(&blocks, range);
 
     println!("📊 Solution Space Summary:");
-    println!("  Tasks: {}", solution_space.task_count());
+    println!("  Tasks: {}", solution_space.count());
     println!("  Total intervals: {}", solution_space.interval_count());
     println!(
         "  Total capacity: {:.1}s\n",
@@ -96,30 +88,30 @@ fn main() {
     println!("🔎 Per-Task Queries:\n");
 
     // Query TaskA (has constraints)
-    if let Some(intervals) = solution_space.get_intervals("1") {
-        println!("TaskA (id=1):");
+    if let Some(intervals) = solution_space.get_intervals(&task_a_id) {
+        println!("TaskA (id={}):", task_a_id);
         println!("  Intervals: {}", intervals.len());
         println!(
             "  Capacity: {:.1}s",
-            solution_space.task_capacity("1").value()
+            solution_space.capacity(&task_a_id).value()
         );
         println!(
             "  Can place at t=50s? {}",
-            solution_space.can_place_task("1", Quantity::new(50.0), Quantity::new(100.0))
+            solution_space.can_place(&task_a_id, Quantity::new(50.0), Quantity::new(100.0))
         );
         println!(
             "  Can place at t=600s? {}",
-            solution_space.can_place_task("1", Quantity::new(600.0), Quantity::new(100.0))
+            solution_space.can_place(&task_a_id, Quantity::new(600.0), Quantity::new(100.0))
         );
     }
 
     // Query TaskB (no constraints - has full range)
-    if let Some(intervals) = solution_space.get_intervals("2") {
-        println!("\nTaskB (id=2, no constraints):");
+    if let Some(intervals) = solution_space.get_intervals(&task_b_id) {
+        println!("\nTaskB (id={}, no constraints):", task_b_id);
         println!("  Intervals: {}", intervals.len());
         println!(
             "  Capacity: {:.1}s",
-            solution_space.task_capacity("2").value()
+            solution_space.capacity(&task_b_id).value()
         );
         for (i, interval) in intervals.iter().enumerate() {
             println!(
@@ -132,20 +124,20 @@ fn main() {
     }
 
     // Query TaskC (from different block)
-    if let Some(intervals) = solution_space.get_intervals("3") {
-        println!("\nTaskC (id=3):");
+    if let Some(intervals) = solution_space.get_intervals(&task_c_id) {
+        println!("\nTaskC (id={}):", task_c_id);
         println!("  Intervals: {}", intervals.len());
         println!(
             "  Earliest fit: {:.1}s",
             solution_space
-                .find_earliest_fit_for_task("3", Quantity::new(75.0))
+                .find_earliest_fit_for(&task_c_id, Quantity::new(75.0))
                 .map(|q| q.value())
                 .unwrap_or(f64::NAN)
         );
     }
 
     println!("\n📋 Task IDs in solution space:");
-    for task_id in solution_space.task_ids() {
+    for task_id in solution_space.ids() {
         println!("  - id: {}", task_id);
     }
 

@@ -265,8 +265,8 @@ impl<U: qtty::Unit> Schedule<U> {
         self.by_start.values().map(|e| (e.id.clone(), e.interval))
     }
 
-    /// Returns an iterator over all task IDs.
-    pub fn task_ids(&self) -> impl Iterator<Item = Id> + '_ {
+    /// Returns an iterator over all IDs.
+    pub fn ids(&self) -> impl Iterator<Item = Id> + '_ {
         self.start_by_id.keys().cloned()
     }
 
