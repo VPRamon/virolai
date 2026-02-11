@@ -10,5 +10,3 @@ pub use task::Task;
 // Re-export from the dedicated `resource` module for backward compatibility.
 #[deprecated(note = "Use `vrolai::resource::Resource` instead")]
 pub use crate::resource::Resource;
-#[deprecated(note = "Use `vrolai::resource::Instrument` instead")]
-pub use crate::resource::Instrument;

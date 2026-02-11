@@ -11,7 +11,7 @@ use qtty::Unit;
 /// Resources represent shared scheduling constraints computed once and applied
 /// to all tasks. Typical examples include:
 /// - Telescope availability (nighttime, weather constraints)
-/// - Instrument operational limits (moon altitude, sun distance)
+/// - Resource operational limits (moon altitude, sun distance)
 /// - Observatory maintenance windows
 ///
 /// # Type Parameters
