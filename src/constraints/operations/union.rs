@@ -14,12 +14,8 @@ use qtty::Unit;
 /// Helper function to merge an interval into result, merging with the last one when needed.
 fn merge_into<U: Unit>(result: &mut Vec<Interval<U>>, iv: Interval<U>) {
     if let Some(last) = result.last_mut() {
-        if last.overlaps(&iv) || last.end().value() == iv.start().value() {
-            let new_end = if last.end().value() > iv.end().value() {
-                last.end()
-            } else {
-                iv.end()
-            };
+        if last.overlaps(&iv) {
+            let new_end = crate::constraints::quantity_max(last.end(), iv.end());
             *last = Interval::new(last.start(), new_end);
             return;
         }
@@ -27,11 +23,25 @@ fn merge_into<U: Unit>(result: &mut Vec<Interval<U>>, iv: Interval<U>) {
     result.push(iv);
 }
 
+fn extend_merged<U: Unit>(result: &mut Vec<Interval<U>>, intervals: &[Interval<U>]) {
+    for iv in intervals {
+        merge_into(result, *iv);
+    }
+}
+
 pub fn compute_union<U: Unit>(a: &[Interval<U>], b: &[Interval<U>]) -> Vec<Interval<U>> {
     // assert a and b are canonical (debug-only)
     debug_assert!(super::assertions::is_canonical(a));
     debug_assert!(super::assertions::is_canonical(b));
-    let mut result: Vec<Interval<U>> = Vec::new();
+
+    if a.is_empty() {
+        return b.to_vec();
+    }
+    if b.is_empty() {
+        return a.to_vec();
+    }
+
+    let mut result: Vec<Interval<U>> = Vec::with_capacity(a.len() + b.len());
     let mut i = 0usize;
     let mut j = 0usize;
 
@@ -39,24 +49,20 @@ pub fn compute_union<U: Unit>(a: &[Interval<U>], b: &[Interval<U>]) -> Vec<Inter
         let ia = &a[i];
         let ib = &b[j];
 
-        if ia.start().value() <= ib.start().value() {
-            merge_into(&mut result, *ia);
-            i += 1;
-        } else {
-            merge_into(&mut result, *ib);
-            j += 1;
+        match ia.start().partial_cmp(&ib.start()) {
+            Some(std::cmp::Ordering::Greater) => {
+                merge_into(&mut result, *ib);
+                j += 1;
+            }
+            _ => {
+                merge_into(&mut result, *ia);
+                i += 1;
+            }
         }
     }
 
-    while i < a.len() {
-        merge_into(&mut result, a[i]);
-        i += 1;
-    }
-
-    while j < b.len() {
-        merge_into(&mut result, b[j]);
-        j += 1;
-    }
+    extend_merged(&mut result, &a[i..]);
+    extend_merged(&mut result, &b[j..]);
 
     result
 }
