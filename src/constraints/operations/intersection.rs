@@ -15,7 +15,12 @@ pub fn compute_intersection<U: Unit>(a: &[Interval<U>], b: &[Interval<U>]) -> Ve
     // assert a and b are canonical (debug-only)
     debug_assert!(super::assertions::is_canonical(a));
     debug_assert!(super::assertions::is_canonical(b));
-    let mut result = Vec::new();
+
+    if a.is_empty() || b.is_empty() {
+        return Vec::new();
+    }
+
+    let mut result = Vec::with_capacity(a.len().min(b.len()));
     let mut i = 0usize;
     let mut j = 0usize;
 
@@ -24,33 +29,22 @@ pub fn compute_intersection<U: Unit>(a: &[Interval<U>], b: &[Interval<U>]) -> Ve
         let ib = &b[j];
 
         if ia.overlaps(ib) {
-            let start = if ia.start().value() > ib.start().value() {
-                ia.start()
-            } else {
-                ib.start()
-            };
-            let end = if ia.end().value() < ib.end().value() {
-                ia.end()
-            } else {
-                ib.end()
-            };
-            result.push(Interval::new(start, end));
+            result.push(Interval::new(
+                crate::constraints::quantity_max(ia.start(), ib.start()),
+                crate::constraints::quantity_min(ia.end(), ib.end()),
+            ));
         }
 
-        let a_end = ia.end().value();
-        let b_end = ib.end().value();
-
-        if a_end < b_end {
-            i += 1;
-        } else if b_end < a_end {
-            j += 1;
-        } else {
-            i += 1;
-            j += 1;
+        match ia.end().partial_cmp(&ib.end()) {
+            Some(std::cmp::Ordering::Less) => i += 1,
+            Some(std::cmp::Ordering::Greater) => j += 1,
+            _ => {
+                i += 1;
+                j += 1;
+            }
         }
     }
 
-    result.shrink_to_fit();
     result
 }
 
