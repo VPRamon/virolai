@@ -14,6 +14,9 @@ pub enum SchedulingError {
 
     #[error("Cannot perform operation: scheduling block is empty")]
     EmptyGraph,
+
+    #[error("Task ID already exists: {0}")]
+    DuplicateId(String),
 }
 
 #[cfg(test)]
@@ -52,6 +55,12 @@ mod tests {
             e.to_string(),
             "Cannot perform operation: scheduling block is empty"
         );
+    }
+
+    #[test]
+    fn duplicate_id_display() {
+        let e = SchedulingError::DuplicateId("my-task".to_string());
+        assert_eq!(e.to_string(), "Task ID already exists: my-task");
     }
 
     #[test]
