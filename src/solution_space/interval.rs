@@ -46,12 +46,12 @@ impl<U: Unit> Interval<U> {
     /// # Example
     ///
     /// ```rust
-    /// use qtty::{Second, Day};
+    /// use qtty::*;
     /// use vrolai::solution_space::Interval;
     ///
     /// let interval_sec = Interval::<Second>::new(
-    ///     Quantity::<Second>::new(0.0),
-    ///     Quantity::<Second>::new(86400.0)
+    ///     Seconds::new(0.0),
+    ///     Seconds::new(86400.0)
     /// );
     /// let interval_day: Interval<Day> = interval_sec.to();
     /// assert!((interval_day.start().value() - 0.0).abs() < 1e-12);
