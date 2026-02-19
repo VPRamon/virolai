@@ -142,7 +142,7 @@ impl<'de, U: Unit> serde::Deserialize<'de> for Interval<U> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use qtty::{Second, Day};
+    use qtty::{Day, Second};
 
     #[test]
     fn test_interval_creation() {
@@ -156,7 +156,7 @@ mod tests {
     fn test_interval_to_conversion() {
         let interval_sec = Interval::new(
             Quantity::<Second>::new(0.0),
-            Quantity::<Second>::new(86400.0)
+            Quantity::<Second>::new(86400.0),
         );
         let interval_day: Interval<Day> = interval_sec.to();
         assert!((interval_day.start().value() - 0.0).abs() < 1e-12);

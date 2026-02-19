@@ -152,11 +152,7 @@ impl<U: Unit> SolutionSpace<U> {
     }
 
     /// Returns start of the first interval with capacity ≥ `size` for a specific ID.
-    pub fn find_earliest_fit_for(
-        &self,
-        id: &str,
-        size: Quantity<U>,
-    ) -> Option<Quantity<U>> {
+    pub fn find_earliest_fit_for(&self, id: &str, size: Quantity<U>) -> Option<Quantity<U>> {
         self.0.get(id).and_then(|intervals| {
             intervals
                 .iter()
@@ -386,12 +382,8 @@ mod tests {
         let solution_space = SolutionSpace::populate(&blocks, range);
 
         // Test contains_position_for
-        assert!(
-            solution_space.contains_position_for(&task1_id, Quantity::<Second>::new(50.0))
-        );
-        assert!(
-            solution_space.contains_position_for(&task2_id, Quantity::<Second>::new(50.0))
-        );
+        assert!(solution_space.contains_position_for(&task1_id, Quantity::<Second>::new(50.0)));
+        assert!(solution_space.contains_position_for(&task2_id, Quantity::<Second>::new(50.0)));
 
         // Test can_place
         assert!(solution_space.can_place(
@@ -461,8 +453,7 @@ mod tests {
         let solution_space = SolutionSpace::populate(&blocks, range);
 
         // Test find_earliest_fit_for
-        let fit = solution_space
-            .find_earliest_fit_for(&task1_id, Quantity::<Second>::new(500.0));
+        let fit = solution_space.find_earliest_fit_for(&task1_id, Quantity::<Second>::new(500.0));
         assert!(fit.is_some());
         assert_eq!(fit.unwrap().value(), 5000.0);
 

@@ -97,7 +97,9 @@ where
 
     /// Returns a reference to the task with the given ID.
     pub fn task_by_id(&self, id: &str) -> Option<&T> {
-        self.node_by_id.get(id).and_then(|&n| self.graph.node_weight(n))
+        self.node_by_id
+            .get(id)
+            .and_then(|&n| self.graph.node_weight(n))
     }
 
     /// Returns a mutable reference to the task with the given ID.
@@ -111,9 +113,9 @@ where
 
     /// Returns an iterator over `(Id, &Task)` pairs.
     pub fn tasks(&self) -> impl Iterator<Item = (&str, &T)> {
-        self.id_by_node.iter().filter_map(move |(node, id)| {
-            self.graph.node_weight(*node).map(|t| (id.as_str(), t))
-        })
+        self.id_by_node
+            .iter()
+            .filter_map(move |(node, id)| self.graph.node_weight(*node).map(|t| (id.as_str(), t)))
     }
 
     /// Adds dependency edge `from` → `to`.

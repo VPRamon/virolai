@@ -105,7 +105,9 @@ where
         let candidates: Vec<Candidate<T, U>> = blocks
             .iter()
             .flat_map(|block| {
-                block.tasks().map(|(id, task)| Candidate::new(task.clone(), id))
+                block
+                    .tasks()
+                    .map(|(id, task)| Candidate::new(task.clone(), id))
             })
             .collect();
 
@@ -184,7 +186,7 @@ mod tests {
             delay: qtty::Quantity::new(0.0),
         };
 
-        let mut candidate =Candidate::new(task, "boundary");
+        let mut candidate = Candidate::new(task, "boundary");
 
         // Set EST so candidate is not impossible
         candidate.est = Some(qtty::Quantity::new(0.0));
@@ -308,14 +310,14 @@ mod tests {
         };
         let task2 = TestTask {
             name: "Task 2".to_string(),
-            size:qtty::Quantity::new(10.0),
+            size: qtty::Quantity::new(10.0),
             priority: 1,
             delay: qtty::Quantity::new(0.0),
         };
 
         // Both tasks share one long window. Without cursor-aware recomputation,
         // both get EST=0 and the second task is dropped due to overlap.
-        
+
         let horizon = Interval::new(qtty::Quantity::new(0.0), qtty::Quantity::new(100.0));
 
         let mut block1: SchedulingBlock<TestTask, Second> = SchedulingBlock::new();

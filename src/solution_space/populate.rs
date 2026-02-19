@@ -1,9 +1,9 @@
 //! Solution space population utilities.
 
 use super::Interval;
-use crate::Id;
 use crate::constraints::Constraint;
 use crate::scheduling_block::{SchedulingBlock, Task};
+use crate::Id;
 use qtty::{Quantity, Unit};
 use std::collections::HashMap;
 
@@ -26,8 +26,7 @@ where
     for block in blocks {
         for (_id, task) in block.tasks() {
             if let Some(constraint_tree) = task.constraints() {
-                let task_intervals =
-                    constraint_tree.compute_intervals(Interval::new(start, end));
+                let task_intervals = constraint_tree.compute_intervals(Interval::new(start, end));
                 intervals.extend(task_intervals);
             }
         }
@@ -37,7 +36,6 @@ where
 }
 
 impl<U: Unit> super::SolutionSpace<U> {
-
     /// Populates a solution space from multiple scheduling blocks.
     ///
     /// For each task in each block:
