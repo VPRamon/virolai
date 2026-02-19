@@ -1,4 +1,5 @@
 use crate::solution_space::Interval;
+use crate::solution_space::IntervalSet;
 use qtty::Unit;
 
 /// Computes the intersection of two sorted interval sets.
@@ -11,13 +12,13 @@ use qtty::Unit;
 /// # Returns
 ///
 /// A vector of intervals representing the intersection, sorted and non-overlapping.
-pub fn compute_intersection<U: Unit>(a: &[Interval<U>], b: &[Interval<U>]) -> Vec<Interval<U>> {
+pub fn compute_intersection<U: Unit>(a: &[Interval<U>], b: &[Interval<U>]) -> IntervalSet<U> {
     // assert a and b are canonical (debug-only)
     debug_assert!(super::assertions::is_canonical(a));
     debug_assert!(super::assertions::is_canonical(b));
 
     if a.is_empty() || b.is_empty() {
-        return Vec::new();
+        return IntervalSet::new();
     }
 
     let mut result = Vec::with_capacity(a.len().min(b.len()));
@@ -45,7 +46,7 @@ pub fn compute_intersection<U: Unit>(a: &[Interval<U>], b: &[Interval<U>]) -> Ve
         }
     }
 
-    result
+    IntervalSet::from_sorted_unchecked(result)
 }
 
 #[cfg(test)]

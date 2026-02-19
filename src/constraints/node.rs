@@ -5,6 +5,7 @@
 
 use crate::constraints::constraint::Constraint;
 use crate::solution_space::Interval;
+use crate::solution_space::IntervalSet;
 use qtty::Unit;
 use std::ops::Not;
 
@@ -356,12 +357,13 @@ where
     U: Unit,
     C: Constraint<U>,
 {
-    fn compute_intervals(&self, range: Interval<U>) -> Vec<Interval<U>> {
+    fn compute_intervals(&self, range: Interval<U>) -> IntervalSet<U> {
         match self {
             ConstraintExpr::Leaf(constraint) => constraint.compute_intervals(range),
-            ConstraintExpr::Not { child, .. } => {
-                super::operations::compute_complement(child.compute_intervals(range), range)
-            }
+            ConstraintExpr::Not { child, .. } => super::operations::compute_complement(
+                child.compute_intervals(range).into_inner(),
+                range,
+            ),
             ConstraintExpr::Intersection { children, .. } => children
                 .iter()
                 .map(|c| c.compute_intervals(range))
@@ -370,7 +372,7 @@ where
             ConstraintExpr::Union { children, .. } => children
                 .iter()
                 .map(|c| c.compute_intervals(range))
-                .fold(Vec::new(), |acc, v| {
+                .fold(IntervalSet::new(), |acc, v| {
                     super::operations::compute_union(&acc, &v)
                 }),
         }

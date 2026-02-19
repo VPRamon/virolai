@@ -1,4 +1,5 @@
 use crate::solution_space::Interval;
+use crate::solution_space::IntervalSet;
 use qtty::Unit;
 
 /// Computes the union of two sorted, non-overlapping interval sets.
@@ -32,16 +33,16 @@ fn extend_merged<U: Unit>(result: &mut Vec<Interval<U>>, intervals: &[Interval<U
     }
 }
 
-pub fn compute_union<U: Unit>(a: &[Interval<U>], b: &[Interval<U>]) -> Vec<Interval<U>> {
+pub fn compute_union<U: Unit>(a: &[Interval<U>], b: &[Interval<U>]) -> IntervalSet<U> {
     // assert a and b are canonical (debug-only)
     debug_assert!(super::assertions::is_canonical(a));
     debug_assert!(super::assertions::is_canonical(b));
 
     if a.is_empty() {
-        return b.to_vec();
+        return IntervalSet::from_sorted_unchecked(b.to_vec());
     }
     if b.is_empty() {
-        return a.to_vec();
+        return IntervalSet::from_sorted_unchecked(a.to_vec());
     }
 
     let mut result: Vec<Interval<U>> = Vec::with_capacity(a.len() + b.len());
@@ -67,7 +68,7 @@ pub fn compute_union<U: Unit>(a: &[Interval<U>], b: &[Interval<U>]) -> Vec<Inter
     extend_merged(&mut result, &a[i..]);
     extend_merged(&mut result, &b[j..]);
 
-    result
+    IntervalSet::from_sorted_unchecked(result)
 }
 
 #[cfg(test)]

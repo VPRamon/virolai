@@ -1,11 +1,12 @@
 use crate::solution_space::Interval;
+use crate::solution_space::IntervalSet;
 use qtty::Unit;
 
 /// Returns the complement of a canonical interval set within `[start, end]`.
 pub fn compute_complement<U: Unit>(
     canonical: Vec<Interval<U>>,
     interval: Interval<U>,
-) -> Vec<Interval<U>> {
+) -> IntervalSet<U> {
     #[cfg(debug_assertions)]
     assert!(
         super::assertions::is_canonical(&canonical),
@@ -13,7 +14,7 @@ pub fn compute_complement<U: Unit>(
     );
 
     if canonical.is_empty() {
-        return vec![interval];
+        return IntervalSet::from(interval);
     }
 
     let mut result = Vec::with_capacity(canonical.len() + 1);
@@ -29,7 +30,7 @@ pub fn compute_complement<U: Unit>(
         result.push(Interval::new(cursor, interval.end()));
     }
 
-    result
+    IntervalSet::from_sorted_unchecked(result)
 }
 
 #[cfg(test)]

@@ -138,7 +138,10 @@ mod overlap_detection {
 
         // Half-open: [0, 10) and [10, 20) share no point → back-to-back is NOT an overlap.
         let result = schedule.add("2", iv(10.0, 20.0));
-        assert!(result.is_ok(), "Back-to-back half-open tasks must not conflict");
+        assert!(
+            result.is_ok(),
+            "Back-to-back half-open tasks must not conflict"
+        );
     }
 
     #[test]

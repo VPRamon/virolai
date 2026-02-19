@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 
 use super::interval::Interval;
+use super::interval_set::IntervalSet;
 use crate::Id;
 use qtty::{Quantity, Unit};
 
@@ -21,40 +22,7 @@ use qtty::{Quantity, Unit};
 /// - Tasks without constraints get a single interval spanning [start, end]
 /// - Each task maintains its own sorted, non-overlapping interval list
 #[derive(Debug)]
-pub struct SolutionSpace<U: Unit>(HashMap<Id, Vec<Interval<U>>>);
-
-/// Sorts a list of intervals by start and merges overlapping or touching ones.
-///
-/// After this call the list is in **canonical form**: sorted by start with no
-/// two intervals overlapping or abutting (e.g. `[0,5]` + `[5,10]` → `[0,10]`).
-/// All query methods that rely on binary search require this invariant.
-fn normalize_intervals<U: Unit>(intervals: &mut Vec<Interval<U>>) {
-    if intervals.len() <= 1 {
-        return;
-    }
-    intervals.sort_by(|a, b| {
-        a.start()
-            .value()
-            .partial_cmp(&b.start().value())
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-    let mut merged: Vec<Interval<U>> = Vec::with_capacity(intervals.len());
-    for interval in intervals.drain(..) {
-        if let Some(last) = merged.last_mut() {
-            if last.end().value() >= interval.start().value() {
-                // Overlapping or touching – extend the current run if needed.
-                if interval.end().value() > last.end().value() {
-                    *last = Interval::new(last.start(), interval.end());
-                }
-            } else {
-                merged.push(interval);
-            }
-        } else {
-            merged.push(interval);
-        }
-    }
-    *intervals = merged;
-}
+pub struct SolutionSpace<U: Unit>(HashMap<Id, IntervalSet<U>>);
 
 /// Binary search to find interval containing a position in sorted list.
 fn find_interval_containing_sorted<U: Unit>(
@@ -74,11 +42,12 @@ impl<U: Unit> SolutionSpace<U> {
     ///
     /// Each vector is **normalized** (sorted by start, overlapping intervals
     /// merged) so that all binary-search queries remain correct.
-    pub fn from_hashmap(mut map: HashMap<Id, Vec<Interval<U>>>) -> Self {
-        for intervals in map.values_mut() {
-            normalize_intervals(intervals);
-        }
-        Self(map)
+    pub fn from_hashmap(map: HashMap<Id, Vec<Interval<U>>>) -> Self {
+        let canonical = map
+            .into_iter()
+            .map(|(id, intervals)| (id, IntervalSet::from(intervals)))
+            .collect();
+        Self(canonical)
     }
 
     pub fn with_capacity(capacity: usize) -> Self {
@@ -87,35 +56,30 @@ impl<U: Unit> SolutionSpace<U> {
 
     /// Adds an interval for a specific ID.
     ///
-    /// The stored list is re-normalized after insertion so that binary-search
-    /// queries remain correct regardless of insertion order.
+    /// The stored set is kept canonical (sorted, overlaps merged) after
+    /// insertion so that binary-search queries remain correct.
     pub fn add_interval(&mut self, id: impl Into<Id>, interval: Interval<U>) {
-        let v = self.0.entry(id.into()).or_default();
-        v.push(interval);
-        normalize_intervals(v);
+        self.0.entry(id.into()).or_default().push(interval);
     }
 
     /// Adds multiple intervals for a specific ID.
     ///
-    /// The stored list is re-normalized (sorted, overlaps merged) so that
-    /// binary-search queries remain correct.
+    /// The stored set is kept canonical (sorted, overlaps merged) after
+    /// insertion so that binary-search queries remain correct.
     pub fn add_intervals(&mut self, id: impl Into<Id>, intervals: Vec<Interval<U>>) {
-        let v = self.0.entry(id.into()).or_default();
-        v.extend(intervals);
-        normalize_intervals(v);
+        self.0.entry(id.into()).or_default().extend(intervals);
     }
 
     /// Sets the intervals for a specific ID, replacing any existing intervals.
     ///
     /// The supplied list is normalized (sorted, overlaps merged) before storage.
-    pub fn set_intervals(&mut self, id: impl Into<Id>, mut intervals: Vec<Interval<U>>) {
-        normalize_intervals(&mut intervals);
-        self.0.insert(id.into(), intervals);
+    pub fn set_intervals(&mut self, id: impl Into<Id>, intervals: Vec<Interval<U>>) {
+        self.0.insert(id.into(), IntervalSet::from(intervals));
     }
 
     /// Returns intervals for a specific ID.
-    pub fn get_intervals(&self, id: &str) -> Option<&[Interval<U>]> {
-        self.0.get(id).map(|v| v.as_slice())
+    pub fn get_intervals(&self, id: &str) -> Option<&IntervalSet<U>> {
+        self.0.get(id)
     }
 
     /// Returns IDs that have intervals defined.
@@ -150,7 +114,7 @@ impl<U: Unit> SolutionSpace<U> {
     pub fn contains_position_for(&self, id: &str, position: Quantity<U>) -> bool {
         self.0
             .get(id)
-            .map(|intervals| find_interval_containing_sorted(intervals, position).is_some())
+            .map(|set| find_interval_containing_sorted(set, position).is_some())
             .unwrap_or(false)
     }
 
@@ -165,8 +129,8 @@ impl<U: Unit> SolutionSpace<U> {
     pub fn can_place(&self, id: &str, position: Quantity<U>, size: Quantity<U>) -> bool {
         self.0
             .get(id)
-            .map(|intervals| {
-                find_interval_containing_sorted(intervals, position)
+            .map(|set| {
+                find_interval_containing_sorted(set, position)
                     .map(|i| i.can_fit(position, size))
                     .unwrap_or(false)
             })
@@ -232,14 +196,14 @@ impl<U: Unit> SolutionSpace<U> {
     ) -> Option<&Interval<U>> {
         self.0
             .get(id)
-            .and_then(|intervals| find_interval_containing_sorted(intervals, position))
+            .and_then(|set| find_interval_containing_sorted(set, position))
     }
 
     /// Returns the first interval containing `position` across all entries (O(log m) per entry).
     pub fn find_interval_containing(&self, position: Quantity<U>) -> Option<&Interval<U>> {
         self.0
             .values()
-            .find_map(|intervals| find_interval_containing_sorted(intervals, position))
+            .find_map(|set| find_interval_containing_sorted(set, position))
     }
 }
 
@@ -259,8 +223,8 @@ impl<U: Unit> Display for SolutionSpace<U> {
         if !self.0.is_empty() {
             writeln!(f, "  Per-entry breakdown:")?;
 
-            for (id, intervals) in &self.0 {
-                let capacity: Quantity<U> = intervals
+            for (id, set) in &self.0 {
+                let capacity: Quantity<U> = set
                     .iter()
                     .map(|i| i.duration())
                     .fold(Quantity::new(0.0), |acc, dur| acc + dur);
@@ -268,10 +232,10 @@ impl<U: Unit> Display for SolutionSpace<U> {
                     f,
                     "    id {}: {} intervals, capacity {:.3}",
                     id,
-                    intervals.len(),
+                    set.len(),
                     capacity.value()
                 )?;
-                for (i, interval) in intervals.iter().enumerate() {
+                for (i, interval) in set.iter().enumerate() {
                     writeln!(f, "      [{}] {}", i, interval)?;
                 }
             }

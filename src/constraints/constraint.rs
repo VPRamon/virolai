@@ -1,9 +1,9 @@
 //! Core constraint trait for computing valid scheduling intervals.
 
 use crate::solution_space::Interval;
+use crate::solution_space::IntervalSet;
 use qtty::Unit;
 use std::fmt::Debug;
-use std::vec;
 
 /// Computes intervals where a scheduling condition is satisfied.
 ///
@@ -15,10 +15,10 @@ use std::vec;
 /// Implementations should:
 /// - Return non-overlapping, sorted intervals within `[start, end]`
 /// - Be deterministic for identical inputs
-/// - Handle empty results gracefully (return empty `Vec`)
+/// - Handle empty results gracefully (return empty `IntervalSet`)
 pub trait Constraint<U: Unit>: Send + Sync + Debug {
     /// Computes intervals where this constraint is satisfied within `[start, end]`.
-    fn compute_intervals(&self, range: Interval<U>) -> Vec<Interval<U>>;
+    fn compute_intervals(&self, range: Interval<U>) -> IntervalSet<U>;
 
     /// Returns a string representation of this constraint.
     fn stringify(&self) -> String;
@@ -44,10 +44,10 @@ impl<U: Unit + Send + Sync> IntervalConstraint<U> {
 }
 
 impl<U: Unit + Send + Sync> Constraint<U> for IntervalConstraint<U> {
-    fn compute_intervals(&self, range: Interval<U>) -> Vec<Interval<U>> {
+    fn compute_intervals(&self, range: Interval<U>) -> IntervalSet<U> {
         range
             .intersection(&self.interval())
-            .map_or_else(Vec::new, |intersection| vec![intersection])
+            .map_or_else(IntervalSet::new, IntervalSet::from)
     }
 
     fn stringify(&self) -> String {

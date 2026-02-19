@@ -265,8 +265,10 @@ where
         // Use NodeIndex-keyed maps so sparse indices (after removals) are safe.
         let mut earliest_start: HashMap<petgraph::graph::NodeIndex, f64> =
             topo.iter().map(|&n| (n, 0.0)).collect();
-        let mut predecessor: HashMap<petgraph::graph::NodeIndex, Option<petgraph::graph::NodeIndex>> =
-            topo.iter().map(|&n| (n, None)).collect();
+        let mut predecessor: HashMap<
+            petgraph::graph::NodeIndex,
+            Option<petgraph::graph::NodeIndex>,
+        > = topo.iter().map(|&n| (n, None)).collect();
 
         for &node in &topo {
             // Use size_on_axis() for scheduling math
@@ -922,8 +924,7 @@ mod tests {
         block
             .add_task_with_id(TestTask::new("A", 10.0), Some("shared-id".into()))
             .unwrap();
-        let result =
-            block.add_task_with_id(TestTask::new("B", 20.0), Some("shared-id".into()));
+        let result = block.add_task_with_id(TestTask::new("B", 20.0), Some("shared-id".into()));
         assert_eq!(
             result,
             Err(SchedulingError::DuplicateId("shared-id".to_string()))

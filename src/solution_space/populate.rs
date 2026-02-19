@@ -90,7 +90,7 @@ impl<U: Unit> super::SolutionSpace<U> {
                         ct.compute_intervals(range)
                             .into_iter()
                             .filter(|i| i.duration().value() >= task_size.value())
-                            .collect()
+                            .collect::<Vec<_>>()
                     },
                 );
                 (id.to_owned(), intervals)

@@ -3,7 +3,7 @@
 use std::fmt::Debug;
 
 use crate::constraints::{Constraint, ConstraintExpr};
-use crate::solution_space::Interval;
+use crate::solution_space::{Interval, IntervalSet};
 use qtty::Unit;
 
 /// A schedulable resource with constraints that apply to all tasks using it.
@@ -76,10 +76,10 @@ pub trait Resource<A: Unit>: Send + Sync + Debug + 'static {
     ///
     /// A vector of non-overlapping intervals where the resource is available.
     /// Returns a single interval covering the entire horizon if no constraints exist.
-    fn compute_availability(&self, horizon: Interval<A>) -> Vec<Interval<A>> {
+    fn compute_availability(&self, horizon: Interval<A>) -> IntervalSet<A> {
         match self.constraints() {
             Some(constraint_tree) => constraint_tree.compute_intervals(horizon),
-            None => vec![horizon],
+            None => IntervalSet::from(horizon),
         }
     }
 }
