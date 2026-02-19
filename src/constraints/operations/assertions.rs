@@ -9,7 +9,7 @@ pub fn is_canonical<U: Unit>(intervals: &[Interval<U>]) -> bool {
     intervals.windows(2).all(|w| {
         let prev = &w[0];
         let curr = &w[1];
-        !curr.overlaps(prev) && prev.end().value() <= curr.start().value()
+        !curr.overlaps(prev) && prev.end() <= curr.start()
     })
 }
 
