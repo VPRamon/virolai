@@ -16,7 +16,7 @@ use qtty::{Quantity, Unit};
 ///
 /// ```ignore
 /// use qtty::{Second, Day};
-/// use vrolai::units::SameDim;
+/// use virolai::units::SameDim;
 ///
 /// // This compiles because Second and Day share the Time dimension
 /// fn accepts_same_dim<From, To>()
@@ -46,7 +46,7 @@ where
 ///
 /// ```ignore
 /// use qtty::{Quantity, Second, Day};
-/// use vrolai::units::convert;
+/// use virolai::units::convert;
 ///
 /// let duration_sec = Quantity::<Second>::new(86400.0);
 /// let duration_day: Quantity<Day> = convert(duration_sec);

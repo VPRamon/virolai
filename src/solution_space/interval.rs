@@ -47,7 +47,7 @@ impl<U: Unit> Interval<U> {
     ///
     /// ```rust
     /// use qtty::*;
-    /// use vrolai::solution_space::Interval;
+    /// use virolai::solution_space::Interval;
     ///
     /// let interval_sec = Interval::<Second>::new(
     ///     Seconds::new(0.0),

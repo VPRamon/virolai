@@ -3,8 +3,8 @@
 //! Run with: `cargo run --example schedule_usage`
 
 use qtty::{Quantity, Second};
-use vrolai::schedule::Schedule;
-use vrolai::solution_space::Interval;
+use virolai::schedule::Schedule;
+use virolai::solution_space::Interval;
 
 type Time = Quantity<Second>;
 

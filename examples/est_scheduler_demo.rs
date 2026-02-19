@@ -1,10 +1,10 @@
 //! Demonstration of the Early Starting Time (EST) scheduling algorithm.
 
 use qtty::{Quantity, Second};
-use vrolai::algorithms::{ESTScheduler, SchedulingAlgorithm};
-use vrolai::constraints::IntervalConstraint;
-use vrolai::scheduling_block::{SchedulingBlock, Task};
-use vrolai::solution_space::{Interval, SolutionSpace};
+use virolai::algorithms::{ESTScheduler, SchedulingAlgorithm};
+use virolai::constraints::IntervalConstraint;
+use virolai::scheduling_block::{SchedulingBlock, Task};
+use virolai::solution_space::{Interval, SolutionSpace};
 
 #[derive(Debug, Clone)]
 struct SimpleTask {

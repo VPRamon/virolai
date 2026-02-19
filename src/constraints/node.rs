@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 /// # Example
 ///
 /// ```ignore
-/// use vrolai::constraints::ConstraintExpr;
+/// use virolai::constraints::ConstraintExpr;
 ///
 /// // Define your leaf enum
 /// #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,7 +40,7 @@ use serde::{Deserialize, Serialize};
 /// // Build a tree
 /// let tree: ConstraintExpr<MyLeaf> = ConstraintExpr::intersection(vec![
 ///     ConstraintExpr::leaf(MyLeaf::TimeWindow { start: 0.0, end: 100.0 }),
-    ///     ConstraintExpr::negate(ConstraintExpr::leaf(MyLeaf::Custom(c))),
+///     ConstraintExpr::negate(ConstraintExpr::leaf(MyLeaf::Custom(c))),
 /// ]);
 ///
 /// // Serialize/deserialize works automatically
@@ -616,7 +616,7 @@ mod tests {
 
         // Verify JSON structure
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed["op"], "intersection");
+        assert_eq!(parsed["type"], "intersection");
         assert!(parsed["children"].is_array());
 
         // Deserialize back

@@ -34,7 +34,7 @@ use qtty::{Quantity, Unit};
 ///
 /// ```ignore
 /// use qtty::{Day, Second, Quantity};
-/// use vrolai::scheduling_block::Task;
+/// use virolai::scheduling_block::Task;
 ///
 /// struct MyTask {
 ///     duration: Quantity<Second>, // Natural unit: seconds

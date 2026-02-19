@@ -31,8 +31,8 @@ use qtty::Unit;
 /// # Example
 ///
 /// ```ignore
-/// use vrolai::resource::Resource;
-/// use vrolai::solution_space::Interval;
+/// use virolai::resource::Resource;
+/// use virolai::solution_space::Interval;
 /// use qtty::Day;
 ///
 /// struct Telescope {

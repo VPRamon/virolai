@@ -4,9 +4,9 @@
 //! allowing type-safe task identification and cross-block scheduling.
 
 use qtty::{Quantity, Second};
-use vrolai::constraints::{ConstraintExpr, IntervalConstraint};
-use vrolai::scheduling_block::{SchedulingBlock, Task};
-use vrolai::solution_space::{Interval, SolutionSpace};
+use virolai::constraints::{ConstraintExpr, IntervalConstraint};
+use virolai::scheduling_block::{SchedulingBlock, Task};
+use virolai::solution_space::{Interval, SolutionSpace};
 
 #[derive(Debug)]
 struct MyTask {
