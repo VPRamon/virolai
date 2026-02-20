@@ -2,6 +2,7 @@
 
 use std::fmt::Debug;
 
+use crate::algorithms::rl::types::AgentType;
 use crate::constraints::{Constraint, ConstraintExpr};
 use crate::solution_space::{Interval, IntervalSet};
 use qtty::Unit;
@@ -81,6 +82,31 @@ pub trait Resource<A: Unit>: Send + Sync + Debug + 'static {
             Some(constraint_tree) => constraint_tree.compute_intervals(horizon),
             None => IntervalSet::from(horizon),
         }
+    }
+
+    // --- RL scheduling extensions (all optional, backward-compatible) ---
+
+    /// Returns the agent type (age group) of this resource, if it acts as a mobile agent.
+    ///
+    /// Used by the RL environment to determine movement speed and to check
+    /// whether the resource satisfies task coalition requirements.
+    fn agent_type(&self) -> Option<AgentType> {
+        None
+    }
+
+    /// Returns the 2D spatial position `(x, y)` of this resource, if applicable.
+    ///
+    /// Used by the RL environment for distance computations and observation encoding.
+    fn position_2d(&self) -> Option<(f64, f64)> {
+        None
+    }
+
+    /// Returns the maximum movement speed of this resource per time step.
+    ///
+    /// Defaults to 0.0 (stationary). Override when the resource represents
+    /// a mobile agent in the RL environment.
+    fn max_speed(&self) -> f64 {
+        0.0
     }
 }
 
