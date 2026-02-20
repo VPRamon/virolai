@@ -17,6 +17,9 @@ pub(crate) mod test_utils;
 // Re-export unit conversion traits for ergonomic use
 pub use units::{convert, SameDim};
 
+// Re-export multi-dimensional solution space types
+pub use solution_space::{Axes, Region2, Region3, Region4, SolutionSpaceND};
+
 /// Identifier type used for tasks, resources, and scheduling artifacts.
 pub type Id = String;
 

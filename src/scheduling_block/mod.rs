@@ -1,11 +1,13 @@
 pub mod error;
 pub mod task;
+pub mod task_nd;
 
 mod block;
 pub use block::SchedulingBlock;
 
 pub use error::SchedulingError;
 pub use task::Task;
+pub use task_nd::TaskND;
 
 // Re-export from the dedicated `resource` module for backward compatibility.
 #[deprecated(note = "Use `virolai::resource::Resource` instead")]

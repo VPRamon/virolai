@@ -159,12 +159,10 @@ impl<'a, D> DynamicConstraintIndex<'a, D> {
         U: Unit,
     {
         match self.evaluate(task_id, range, ctx) {
-            Some(dynamic_intervals) => {
-                crate::constraints::operations::compute_intersection(
-                    static_intervals,
-                    &dynamic_intervals,
-                )
-            }
+            Some(dynamic_intervals) => crate::constraints::operations::compute_intersection(
+                static_intervals,
+                &dynamic_intervals,
+            ),
             None => static_intervals.clone(),
         }
     }
@@ -247,7 +245,9 @@ mod tests {
         let ss = SolutionSpace::new();
         let ctx = SchedulingContext::new(&schedule, &ss);
 
-        assert!(index.evaluate("nonexistent", iv(0.0, 100.0), &ctx).is_none());
+        assert!(index
+            .evaluate("nonexistent", iv(0.0, 100.0), &ctx)
+            .is_none());
     }
 
     #[test]

@@ -1,28 +1,38 @@
 //! Solution space: a collection of valid intervals for task placement.
 //!
-//! The [`SolutionSpace`] acts as a lookup table that schedulers query to find
-//! feasible positions. Users populate it with intervals computed from constraints.
+//! The primary type is [`SolutionSpaceND<A>`], parametrised by an [`Axes`]
+//! tuple.  The type alias `SolutionSpace<U> = SolutionSpaceND<(U,)>` keeps
+//! every existing call site compiling without modification.
 
 use std::collections::HashMap;
 use std::fmt::Display;
 
+use super::axes::Axes;
 use super::interval::Interval;
 use super::interval_set::IntervalSet;
 use crate::Id;
 use qtty::{Quantity, Unit};
 
-/// Collection of valid intervals where tasks may be scheduled.
+/// Collection of per-task feasibility regions in an N-dimensional product space.
 ///
-/// Maps task IDs to their valid scheduling intervals.
-/// Schedulers query it to determine feasible task placements.
+/// `A` encodes the product of physical axes, e.g. `(Second,)` for 1-D or
+/// `(Second, Hertz)` for 2-D time × frequency.  The EST engine always
+/// operates on the **primary** axis `A::Primary`.
 ///
-/// # Design
+/// # Type alias for 1-D usage
 ///
-/// - Uses task IDs (`String`) as stable keys, avoiding lifetime issues
-/// - Tasks without constraints get a single interval spanning [start, end]
-/// - Each task maintains its own sorted, non-overlapping interval list
+/// ```text
+/// pub type SolutionSpace<U> = SolutionSpaceND<(U,)>;
+/// ```
+///
+/// All `SolutionSpace<U>` call sites are unchanged.
 #[derive(Debug)]
-pub struct SolutionSpace<U: Unit>(HashMap<Id, IntervalSet<U>>);
+pub struct SolutionSpaceND<A: Axes>(HashMap<Id, A::Region>);
+
+/// 1-D solution space (backward-compatible alias).
+///
+/// Identical in layout and API to the previous concrete `SolutionSpace<U>` type.
+pub type SolutionSpace<U> = SolutionSpaceND<(U,)>;
 
 /// Binary search to find interval containing a position in sorted list.
 fn find_interval_containing_sorted<U: Unit>(
@@ -33,25 +43,92 @@ fn find_interval_containing_sorted<U: Unit>(
     intervals.get(idx).filter(|i| i.contains(position))
 }
 
-impl<U: Unit> SolutionSpace<U> {
+// ─────────────────────────────────────────────────────────────────────────────
+// Generic methods (all arities)
+// ─────────────────────────────────────────────────────────────────────────────
+
+impl<A: Axes> SolutionSpaceND<A> {
+    /// Creates an empty solution space.
     pub fn new() -> Self {
         Self(HashMap::new())
     }
 
+    /// Creates an empty solution space with pre-allocated capacity.
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(HashMap::with_capacity(capacity))
+    }
+
+    // ── Region-level access ───────────────────────────────────────────
+
+    /// Inserts or replaces the feasibility region for `id`.
+    pub fn add_region(&mut self, id: impl Into<Id>, region: A::Region) {
+        self.0.insert(id.into(), region);
+    }
+
+    /// Returns a shared reference to the feasibility region for `id`, if any.
+    pub fn get_region(&self, id: &str) -> Option<&A::Region> {
+        self.0.get(id)
+    }
+
+    /// Returns a mutable reference to the feasibility region for `id`, if any.
+    pub fn get_region_mut(&mut self, id: &str) -> Option<&mut A::Region> {
+        self.0.get_mut(id)
+    }
+
+    /// Returns the primary-axis interval set for `id`.
+    pub fn get_primary_intervals(&self, id: &str) -> Option<&IntervalSet<A::Primary>> {
+        self.0.get(id).map(A::primary_of)
+    }
+
+    // ── Map-level housekeeping ────────────────────────────────────────
+
+    /// Returns an iterator over task IDs that have regions defined.
+    pub fn ids(&self) -> impl Iterator<Item = &str> + '_ {
+        self.0.keys().map(|k| k.as_str())
+    }
+
+    /// Returns the number of tasks in the solution space.
+    pub fn count(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Removes the region for `id`.  Returns `true` if any entry was removed.
+    pub fn remove(&mut self, id: &str) -> bool {
+        self.0.remove(id).is_some()
+    }
+
+    /// Removes all entries.
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
+
+    /// Returns `true` if the solution space contains no entries.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl<A: Axes> Default for SolutionSpaceND<A> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 1-D methods  (SolutionSpace<U> = SolutionSpaceND<(U,)>)
+// ─────────────────────────────────────────────────────────────────────────────
+
+impl<U: Unit> SolutionSpaceND<(U,)> {
     /// Creates a [`SolutionSpace`] from a pre-built map.
     ///
     /// Each vector is **normalized** (sorted by start, overlapping intervals
     /// merged) so that all binary-search queries remain correct.
-    pub fn from_hashmap(map: HashMap<Id, Vec<Interval<U>>>) -> Self {
+    pub fn from_hashmap(map: HashMap<Id, Vec<Interval<U>>>) -> SolutionSpaceND<(U,)> {
         let canonical = map
             .into_iter()
             .map(|(id, intervals)| (id, IntervalSet::from(intervals)))
             .collect();
         Self(canonical)
-    }
-
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self(HashMap::with_capacity(capacity))
     }
 
     /// Adds an interval for a specific ID.
@@ -82,32 +159,9 @@ impl<U: Unit> SolutionSpace<U> {
         self.0.get(id)
     }
 
-    /// Returns IDs that have intervals defined.
-    pub fn ids(&self) -> impl Iterator<Item = &str> + '_ {
-        self.0.keys().map(|k| k.as_str())
-    }
-
-    /// Returns total number of entries in the solution space.
-    pub fn count(&self) -> usize {
-        self.0.len()
-    }
-
     /// Returns total number of intervals across all tasks.
     pub fn interval_count(&self) -> usize {
         self.0.values().map(|v| v.len()).sum()
-    }
-
-    /// Removes all intervals for a specific ID.
-    pub fn remove(&mut self, id: &str) -> bool {
-        self.0.remove(id).is_some()
-    }
-
-    pub fn clear(&mut self) {
-        self.0.clear();
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
     }
 
     /// Returns true if the specified ID has any interval containing `position` (O(log m) binary search).
@@ -207,13 +261,7 @@ impl<U: Unit> SolutionSpace<U> {
     }
 }
 
-impl<U: Unit> Default for SolutionSpace<U> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<U: Unit> Display for SolutionSpace<U> {
+impl<U: Unit> Display for SolutionSpaceND<(U,)> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "SolutionSpace {{")?;
         writeln!(f, "  Entries: {}", self.count())?;

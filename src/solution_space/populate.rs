@@ -35,7 +35,7 @@ where
     intervals
 }
 
-impl<U: Unit> super::SolutionSpace<U> {
+impl<U: Unit> super::SolutionSpaceND<(U,)> {
     /// Populates a solution space from multiple scheduling blocks.
     ///
     /// For each task in each block:

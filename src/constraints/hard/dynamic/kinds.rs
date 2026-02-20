@@ -73,11 +73,13 @@ impl<U: Unit> DynamicConstraint<U> for DynConstraintKind {
         ctx: &SchedulingContext<U>,
     ) -> IntervalSet<U> {
         match self {
-            Self::Dependence => ctx
-                .schedule
-                .contains_task(ref_task_id)
-                .then(|| IntervalSet::from(range))
-                .unwrap_or_else(IntervalSet::new),
+            Self::Dependence => {
+                if ctx.schedule.contains_task(ref_task_id) {
+                    IntervalSet::from(range)
+                } else {
+                    IntervalSet::new()
+                }
+            }
 
             Self::Consecutive => ctx
                 .schedule
@@ -88,9 +90,13 @@ impl<U: Unit> DynamicConstraint<U> for DynConstraintKind {
                 })
                 .map_or_else(IntervalSet::new, IntervalSet::from),
 
-            Self::Exclusive => (!ctx.schedule.contains_task(ref_task_id))
-                .then(|| IntervalSet::from(range))
-                .unwrap_or_else(IntervalSet::new),
+            Self::Exclusive => {
+                if !ctx.schedule.contains_task(ref_task_id) {
+                    IntervalSet::from(range)
+                } else {
+                    IntervalSet::new()
+                }
+            }
         }
     }
 
@@ -137,7 +143,8 @@ mod tests {
         let ss = SolutionSpace::new();
         let ctx = SchedulingContext::new(&schedule, &ss);
 
-        let result = DynConstraintKind::Dependence.compute_intervals(iv(0.0, 100.0), "task-a", &ctx);
+        let result =
+            DynConstraintKind::Dependence.compute_intervals(iv(0.0, 100.0), "task-a", &ctx);
         assert_eq!(result.len(), 1);
         assert_eq!(result[0], iv(0.0, 100.0));
     }
@@ -147,7 +154,8 @@ mod tests {
         let (schedule, ss) = empty_ctx();
         let ctx = SchedulingContext::new(&schedule, &ss);
 
-        let result = DynConstraintKind::Dependence.compute_intervals(iv(0.0, 100.0), "task-a", &ctx);
+        let result =
+            DynConstraintKind::Dependence.compute_intervals(iv(0.0, 100.0), "task-a", &ctx);
         assert!(result.is_empty());
     }
 

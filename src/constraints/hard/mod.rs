@@ -13,4 +13,6 @@ pub use static_::Constraint;
 pub use static_::IntervalConstraint;
 
 // Re-export key dynamic types for ergonomic access.
-pub use dynamic::{DynConstraintKind, DynamicConstraint, DynamicConstraintIndex, SchedulingContext};
+pub use dynamic::{
+    DynConstraintKind, DynamicConstraint, DynamicConstraintIndex, SchedulingContext,
+};
