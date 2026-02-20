@@ -73,39 +73,24 @@ impl<U: Unit> DynamicConstraint<U> for DynConstraintKind {
         ctx: &SchedulingContext<U>,
     ) -> IntervalSet<U> {
         match self {
-            Self::Dependence => {
-                if ctx.schedule.contains_task(ref_task_id) {
-                    IntervalSet::from(range)
-                } else {
-                    IntervalSet::new()
-                }
-            }
+            Self::Dependence => ctx
+                .schedule
+                .contains_task(ref_task_id)
+                .then(|| IntervalSet::from(range))
+                .unwrap_or_else(IntervalSet::new),
 
-            Self::Consecutive => {
-                if let Some(ref_interval) = ctx.schedule.get_interval(ref_task_id) {
-                    let effective_start = if range.start().value() >= ref_interval.end().value() {
-                        range.start()
-                    } else {
-                        ref_interval.end()
-                    };
-                    if effective_start.value() < range.end().value() {
-                        IntervalSet::from(Interval::new(effective_start, range.end()))
-                    } else {
-                        IntervalSet::new()
-                    }
-                } else {
-                    // Reference task not scheduled → target cannot be scheduled
-                    IntervalSet::new()
-                }
-            }
+            Self::Consecutive => ctx
+                .schedule
+                .get_interval(ref_task_id)
+                .and_then(|ref_interval| {
+                    let start = range.start().max(ref_interval.end());
+                    (start < range.end()).then(|| Interval::new(start, range.end()))
+                })
+                .map_or_else(IntervalSet::new, IntervalSet::from),
 
-            Self::Exclusive => {
-                if ctx.schedule.contains_task(ref_task_id) {
-                    IntervalSet::new()
-                } else {
-                    IntervalSet::from(range)
-                }
-            }
+            Self::Exclusive => (!ctx.schedule.contains_task(ref_task_id))
+                .then(|| IntervalSet::from(range))
+                .unwrap_or_else(IntervalSet::new),
         }
     }
 
@@ -137,16 +122,6 @@ mod tests {
 
     fn iv(start: f64, end: f64) -> Interval<Second> {
         Interval::from_f64(start, end)
-    }
-
-    fn ctx_with_schedule(schedule: &Schedule<Second>) -> SchedulingContext<Second> {
-        let ss = SolutionSpace::new();
-        // We need a reference that outlives the ctx, so use a leaked ref for tests.
-        // Instead, build it properly:
-        SchedulingContext {
-            schedule,
-            solution_space: Box::leak(Box::new(ss)),
-        }
     }
 
     fn empty_ctx() -> (Schedule<Second>, SolutionSpace<Second>) {
