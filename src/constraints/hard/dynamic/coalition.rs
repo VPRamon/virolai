@@ -93,9 +93,9 @@ impl CoalitionConstraint {
     /// `assigned` maps resource type → number of resources of that type currently
     /// assigned to the task.  Any type not present in `assigned` is treated as 0.
     pub fn is_satisfied(&self, assigned: &HashMap<String, u32>) -> bool {
-        self.requirements.iter().all(|(rtype, &required)| {
-            assigned.get(rtype).copied().unwrap_or(0) >= required
-        })
+        self.requirements
+            .iter()
+            .all(|(rtype, &required)| assigned.get(rtype).copied().unwrap_or(0) >= required)
     }
 
     /// Returns the deficit for each type: how many more resources are needed.

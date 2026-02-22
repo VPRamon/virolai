@@ -137,7 +137,8 @@ mod tests {
         let ss = SolutionSpace::new();
         let ctx = SchedulingContext::new(&schedule, &ss);
 
-        let result = DynConstraintKind::Dependence.compute_intervals(iv(0.0, 100.0), "task-a", &ctx);
+        let result =
+            DynConstraintKind::Dependence.compute_intervals(iv(0.0, 100.0), "task-a", &ctx);
         assert_eq!(result.len(), 1);
         assert_eq!(result[0], iv(0.0, 100.0));
     }
@@ -147,7 +148,8 @@ mod tests {
         let (schedule, ss) = empty_ctx();
         let ctx = SchedulingContext::new(&schedule, &ss);
 
-        let result = DynConstraintKind::Dependence.compute_intervals(iv(0.0, 100.0), "task-a", &ctx);
+        let result =
+            DynConstraintKind::Dependence.compute_intervals(iv(0.0, 100.0), "task-a", &ctx);
         assert!(result.is_empty());
     }
 

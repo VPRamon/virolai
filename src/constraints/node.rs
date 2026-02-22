@@ -457,7 +457,9 @@ where
                 "Intersection({})",
                 children
                     .iter()
-                    .map(|c| crate::constraints::hard::dynamic::DynamicConstraint::<U>::stringify(c))
+                    .map(
+                        |c| crate::constraints::hard::dynamic::DynamicConstraint::<U>::stringify(c)
+                    )
                     .collect::<Vec<_>>()
                     .join(" ∩ ")
             ),
@@ -465,7 +467,9 @@ where
                 "Union({})",
                 children
                     .iter()
-                    .map(|c| crate::constraints::hard::dynamic::DynamicConstraint::<U>::stringify(c))
+                    .map(
+                        |c| crate::constraints::hard::dynamic::DynamicConstraint::<U>::stringify(c)
+                    )
                     .collect::<Vec<_>>()
                     .join(" ∪ ")
             ),

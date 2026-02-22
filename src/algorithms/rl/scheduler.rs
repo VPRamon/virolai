@@ -13,7 +13,6 @@
 //!
 //! These constraints will be relaxed in future milestones.
 
- 
 use qtty::{Quantity, Unit};
 
 use crate::algorithms::SchedulingAlgorithm;
