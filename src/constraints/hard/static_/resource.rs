@@ -106,11 +106,11 @@ impl ResourceConstraint {
         let id_match = self
             .allowed_ids
             .as_ref()
-            .map_or(false, |ids| ids.contains(resource_id));
+            .is_some_and(|ids| ids.contains(resource_id));
         let type_match = self
             .allowed_types
             .as_ref()
-            .map_or(false, |types| types.contains(resource_type));
+            .is_some_and(|types| types.contains(resource_type));
 
         match (&self.allowed_ids, &self.allowed_types) {
             (None, None) => true,

@@ -7,6 +7,7 @@ use std::cmp::Ordering;
 use super::candidate::Candidate;
 
 /// Compares candidates by task ID for deterministic tie-breaking.
+#[allow(dead_code)]
 pub fn compare_by_id<T, U>(a: &Candidate<T, U>, b: &Candidate<T, U>) -> Ordering
 where
     T: Task<U>,
@@ -16,6 +17,7 @@ where
 }
 
 /// Compares candidates of the same kind (both endangered or both flexible).
+#[allow(dead_code)]
 pub fn compare_same_kind<T, U>(a: &Candidate<T, U>, b: &Candidate<T, U>) -> Ordering
 where
     T: Task<U>,
@@ -48,6 +50,7 @@ where
 /// Flexible goes first iff it starts before the endangered and doesn't block it.
 ///
 /// This implementation accounts for inter-task delays to match C++ core behavior.
+#[allow(dead_code)]
 pub fn compare_endangered_flexible<T, U>(
     endangered: &Candidate<T, U>,
     flexible: &Candidate<T, U>,
@@ -81,6 +84,7 @@ where
 }
 
 /// Main comparison function for sorting candidates.
+#[allow(dead_code)]
 pub fn compare_candidates<T, U>(
     a: &Candidate<T, U>,
     b: &Candidate<T, U>,

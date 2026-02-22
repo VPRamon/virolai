@@ -74,6 +74,7 @@ where
     }
 
     /// Get deadline.
+    #[allow(dead_code)]
     pub fn deadline(&self) -> Option<Quantity<A>> {
         self.deadline
     }

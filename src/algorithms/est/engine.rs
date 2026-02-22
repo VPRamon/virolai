@@ -7,7 +7,6 @@ use qtty::Unit;
 
 use super::candidate::Candidate;
 use super::metrics::{compute_deadline, compute_est, compute_flexibility};
-use super::ordering::compare_candidates;
 
 /// Updates candidate metrics and sorts them.
 pub fn update_candidates<T, U>(
@@ -53,7 +52,10 @@ pub fn update_candidates<T, U>(
             2
         };
         // EST key (total order). Missing EST → large value to push later.
-        let est_key: i128 = c.est().map(|q| f64_to_ordered_i128(q.value())).unwrap_or(i128::MAX / 4);
+        let est_key: i128 = c
+            .est()
+            .map(|q| f64_to_ordered_i128(q.value()))
+            .unwrap_or(i128::MAX / 4);
         // priority: higher first → negate to sort ascending
         let prio_key: i32 = -c.task().priority();
         // flexibility key (total order)
