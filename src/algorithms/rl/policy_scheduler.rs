@@ -1,12 +1,17 @@
-//! Policy-driven scheduling algorithm.
+//! RL scheduling algorithm.
 //!
 //! Bridges a trained [`NeuralPolicy`] to the [`SchedulingAlgorithm`] interface,
 //! using the policy to determine task selection order and the existing
 //! constraint-respecting placement logic from [`find_earliest_non_overlapping`].
 //!
+//! # Requirements
+//!
+//! This module requires the `rl-nn` feature (tch / libtorch) and a trained
+//! actor checkpoint produced by [`MAPPOTrainer`].
+//!
 //! # Milestone 1 constraints
 //!
-//! Same as [`RLScheduler`]: time-only, single agent type, one resource per task.
+//! Time-only, single agent type, one resource per task.
 //! Spatial displacement is ignored (all positions at origin).
 
 use std::path::{Path, PathBuf};
@@ -26,7 +31,7 @@ use crate::schedule::Schedule;
 use crate::scheduling_block::{SchedulingBlock, Task};
 use crate::solution_space::{Interval, SolutionSpace};
 
-/// Scheduler that uses a trained neural policy for task selection ordering.
+/// RL scheduler that uses a trained neural policy for task selection ordering.
 ///
 /// The policy decides which tasks to prioritize; the constraint-respecting
 /// placement logic handles exact time-window assignment.
@@ -34,12 +39,12 @@ use crate::solution_space::{Interval, SolutionSpace};
 /// # Construction
 ///
 /// ```ignore
-/// use virolai::algorithms::rl::policy_scheduler::PolicyDrivenScheduler;
+/// use virolai::algorithms::RLScheduler;
 ///
-/// let scheduler = PolicyDrivenScheduler::from_checkpoint("checkpoints/actor.pt")?;
+/// let scheduler = RLScheduler::from_checkpoint("checkpoints/actor.pt", tch::Device::Cpu)?;
 /// let schedule = scheduler.schedule(&blocks, &solution_space, horizon);
 /// ```
-pub struct PolicyDrivenScheduler {
+pub struct RLScheduler {
     /// Loaded neural policy (runs in greedy mode for inference).
     ///
     /// Wrapped in `Mutex` because [`SchedulingAlgorithm::schedule`] takes `&self`
@@ -51,8 +56,8 @@ pub struct PolicyDrivenScheduler {
     checkpoint_path: PathBuf,
 }
 
-impl PolicyDrivenScheduler {
-    /// Creates a new policy-driven scheduler from a saved actor checkpoint.
+impl RLScheduler {
+    /// Creates a new RL scheduler from a saved actor checkpoint.
     ///
     /// # Arguments
     ///
@@ -69,7 +74,7 @@ impl PolicyDrivenScheduler {
         Self::from_checkpoint_with_config(checkpoint_path, RLConfig::default(), device)
     }
 
-    /// Creates a new policy-driven scheduler with custom RL config.
+    /// Creates a new RL scheduler with custom RL config.
     pub fn from_checkpoint_with_config(
         checkpoint_path: impl AsRef<Path>,
         config: RLConfig,
@@ -86,7 +91,7 @@ impl PolicyDrivenScheduler {
         })
     }
 
-    /// Creates a policy-driven scheduler with an already-loaded policy.
+    /// Creates an RL scheduler with an already-loaded policy.
     ///
     /// Useful for evaluation during training without reloading from disk.
     pub fn with_policy(policy: NeuralPolicy, config: RLConfig) -> Self {
@@ -188,7 +193,7 @@ impl PolicyDrivenScheduler {
     }
 }
 
-impl<T, U, D, E> SchedulingAlgorithm<T, U, D, E> for PolicyDrivenScheduler
+impl<T, U, D, E> SchedulingAlgorithm<T, U, D, E> for RLScheduler
 where
     T: Task<U> + Clone,
     U: Unit,
@@ -448,7 +453,7 @@ mod tests {
             ..RLConfig::default()
         };
         let policy = NeuralPolicy::new(&config, Device::Cpu);
-        let scheduler = PolicyDrivenScheduler::with_policy(policy, config);
+        let scheduler = RLScheduler::with_policy(policy, config);
 
         let mut block: SchedulingBlock<TestTask, Second> = SchedulingBlock::new();
         let id1 = block.add_task(make_task("t1", 100.0, 10));
@@ -482,7 +487,7 @@ mod tests {
             ..RLConfig::default()
         };
         let policy = NeuralPolicy::new(&config, Device::Cpu);
-        let scheduler = PolicyDrivenScheduler::with_policy(policy, config);
+        let scheduler = RLScheduler::with_policy(policy, config);
 
         let mut block: SchedulingBlock<TestTask, Second> = SchedulingBlock::new();
         let mut ids = Vec::new();

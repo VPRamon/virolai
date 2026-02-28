@@ -1,15 +1,13 @@
 //! RL-based scheduling module.
 //!
-//! The [`scheduler::RLScheduler`] is always available and implements the
-//! [`SchedulingAlgorithm`](crate::algorithms::SchedulingAlgorithm) trait
-//! via a greedy heuristic.
-//!
 //! The full multi-agent RL environment, policies, and training infrastructure
 //! are behind the `rl` feature flag (which brings in `rand`).  Neural network
 //! policies and MAPPO training additionally require the `rl-nn` feature flag.
+//!
+//! The [`RLScheduler`] (feature `rl-nn`) bridges a trained policy to the
+//! [`SchedulingAlgorithm`](crate::algorithms::SchedulingAlgorithm) trait.
 
 // Always available — no extra dependencies.
-pub mod scheduler;
 pub mod types;
 
 // Modules that require the `rl` feature (rand dependency).
@@ -61,6 +59,6 @@ pub use task_pool::{TaskInstance, TaskPool};
 #[cfg(feature = "rl-nn")]
 pub use network::NeuralPolicy;
 #[cfg(feature = "rl-nn")]
-pub use policy_scheduler::PolicyDrivenScheduler;
+pub use policy_scheduler::RLScheduler;
 #[cfg(feature = "rl-nn")]
 pub use training::{MAPPOTrainer, TrainingConfig};
