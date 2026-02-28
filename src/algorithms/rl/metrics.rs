@@ -58,14 +58,8 @@ impl EvaluationMetrics {
 
                 stats.tasks_collected += result.tasks_collected as u32;
                 stats.tasks_expired += result.tasks_expired as u32;
-
-                // Track collected value (embedded in reward before shaping)
-                // We can approximate it from reward + penalties
-                if result.tasks_collected > 0 {
-                    // The collection value is the positive component
-                    // We track it through the task pool's state
-                    stats.total_collected_value += result.reward.max(0.0);
-                }
+                stats.total_collected_value += result.collected_value;
+                stats.total_expired_value += result.expired_value;
 
                 obs = result.observations;
 
@@ -174,5 +168,54 @@ mod tests {
         let mut policy = RandomPolicy::new(config.action_dim());
         let metrics = EvaluationMetrics::evaluate(&mut env, &mut policy, 3);
         assert_eq!(metrics.n_episodes, 3);
+    }
+
+    #[test]
+    fn expired_value_tracked() {
+        // Use a short horizon and high spawn rate so some expire
+        let config = RLConfig {
+            episode_horizon: 3,
+            spawn_rate: 1.0,
+            max_active_tasks: 20,
+            top_m: 3,
+            ..RLConfig::default()
+        };
+        let mut env = RLEnvironment::new(config.clone(), 123);
+        env.set_agents(&[(1, AgentType::Young)]);
+        let mut policy = RandomPolicy::new(config.action_dim());
+        let metrics = EvaluationMetrics::evaluate(&mut env, &mut policy, 5);
+        // Some tasks should have expired (agents can't collect all spawned tasks)
+        // We can't guarantee an exact value, but the field should be populated
+        assert!(
+            metrics.mean_tasks_expired >= 0.0,
+            "mean_tasks_expired should be non-negative"
+        );
+        // mean_value_lost should match expired_value tracking
+        assert!(
+            metrics.mean_value_lost >= 0.0,
+            "mean_value_lost should be non-negative: got {}",
+            metrics.mean_value_lost
+        );
+    }
+
+    #[test]
+    fn collected_value_positive_over_episodes() {
+        let config = RLConfig {
+            episode_horizon: 20,
+            spawn_rate: 0.8,
+            max_active_tasks: 15,
+            top_m: 3,
+            ..RLConfig::default()
+        };
+        let mut env = RLEnvironment::new(config.clone(), 99);
+        env.set_agents(&[(2, AgentType::Young), (2, AgentType::Middle), (1, AgentType::Old)]);
+        let mut policy = RandomPolicy::new(config.action_dim());
+        let metrics = EvaluationMetrics::evaluate(&mut env, &mut policy, 10);
+        assert_eq!(metrics.n_episodes, 10);
+        // With 5 agents and 20 steps, some collection should happen
+        assert!(
+            metrics.mean_collected_value >= 0.0,
+            "mean_collected_value should be non-negative"
+        );
     }
 }

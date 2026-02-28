@@ -28,6 +28,10 @@ pub struct StepResult {
     pub tasks_collected: usize,
     /// Number of tasks expired this step.
     pub tasks_expired: usize,
+    /// Total value of tasks collected this step.
+    pub collected_value: f64,
+    /// Total value of tasks that expired this step.
+    pub expired_value: f64,
     /// Global state (for centralized critic, if needed).
     pub global_state: Vec<f64>,
 }
@@ -223,6 +227,8 @@ impl RLEnvironment {
         let global_state =
             ObservationBuilder::build_global_state(&self.agents, &self.task_pool, &self.config);
 
+        let expired_value: f64 = expired.iter().map(|t| t.value).sum();
+
         StepResult {
             observations,
             reward,
@@ -230,6 +236,8 @@ impl RLEnvironment {
             time_step: self.t,
             tasks_collected: collected.len(),
             tasks_expired: expired.len(),
+            collected_value,
+            expired_value,
             global_state,
         }
     }

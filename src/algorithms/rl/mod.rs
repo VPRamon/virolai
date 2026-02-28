@@ -33,6 +33,8 @@ pub mod task_pool;
 #[cfg(feature = "rl-nn")]
 pub mod network;
 #[cfg(feature = "rl-nn")]
+pub mod policy_scheduler;
+#[cfg(feature = "rl-nn")]
 pub mod training;
 
 // Public re-exports — always available.
@@ -58,5 +60,7 @@ pub use task_pool::{TaskInstance, TaskPool};
 
 #[cfg(feature = "rl-nn")]
 pub use network::NeuralPolicy;
+#[cfg(feature = "rl-nn")]
+pub use policy_scheduler::PolicyDrivenScheduler;
 #[cfg(feature = "rl-nn")]
 pub use training::{MAPPOTrainer, TrainingConfig};

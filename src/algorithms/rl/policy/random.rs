@@ -1,6 +1,6 @@
 //! Random policy for testing and baselines.
 
-use rand::Rng;
+use rand::RngExt;
 
 use super::trait_::Policy;
 
@@ -25,9 +25,9 @@ impl RandomPolicy {
 
 impl Policy for RandomPolicy {
     fn select_actions(&mut self, observations: &[Vec<f64>]) -> Vec<usize> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         (0..observations.len())
-            .map(|_| rng.gen_range(0..self.action_dim))
+            .map(|_| rng.random_range(0..self.action_dim))
             .collect()
     }
 

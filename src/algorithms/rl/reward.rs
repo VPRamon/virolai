@@ -47,6 +47,19 @@ impl RewardComputer {
             .sum();
         reward += config.reward_progress_alpha * progress;
 
+        // 5. Coverage shaping: +γ × Σ_j P_j for top-M tasks
+        if config.reward_coverage_gamma.abs() > f64::EPSILON {
+            let agent_pos_types: Vec<_> = agents
+                .iter()
+                .map(|a| (a.position, a.agent_type))
+                .collect();
+            let coverage: f64 = top_m_tasks
+                .iter()
+                .map(|task| Self::coverage_progress(task, &agent_pos_types))
+                .sum();
+            reward += config.reward_coverage_gamma * coverage;
+        }
+
         reward
     }
 
@@ -151,5 +164,81 @@ mod tests {
         let agents = vec![(Position::new(5.0, 5.0), AgentType::Young)];
         let p = RewardComputer::coverage_progress(&task, &agents);
         assert!((p - 0.5).abs() < 1e-10);
+    }
+
+    #[test]
+    fn coverage_shaping_increases_reward() {
+        use crate::algorithms::rl::agent::AgentState;
+
+        let config = RLConfig {
+            reward_coverage_gamma: 0.1,
+            reward_progress_alpha: 0.0, // disable progress to isolate coverage
+            ..RLConfig::default()
+        };
+
+        let task = TaskInstance {
+            id: "t1".into(),
+            position: Position::new(5.0, 5.0),
+            value: 10.0,
+            deadline: 10,
+            remaining_time: 10,
+            type_requirements: AgentTypeRequirements::new(1, 0, 0),
+            collection_radius: 3.0,
+            remaining_appearances: None,
+        };
+
+        // Agent far from task → low coverage
+        let agents_far = vec![AgentState::new("a0".into(), Position::new(50.0, 50.0), AgentType::Young)];
+        let top_m: Vec<&TaskInstance> = vec![&task];
+        let reward_far = RewardComputer::compute(0.0, &[], &agents_far, &top_m, &config);
+
+        // Agent within collection radius → full coverage
+        let agents_near = vec![AgentState::new("a0".into(), Position::new(5.0, 5.0), AgentType::Young)];
+        let reward_near = RewardComputer::compute(0.0, &[], &agents_near, &top_m, &config);
+
+        // Coverage shaping should make near-agent reward higher
+        assert!(
+            reward_near > reward_far,
+            "Near reward ({}) should be > far reward ({})",
+            reward_near,
+            reward_far
+        );
+    }
+
+    #[test]
+    fn coverage_shaping_disabled_when_gamma_zero() {
+        use crate::algorithms::rl::agent::AgentState;
+
+        let config = RLConfig {
+            reward_coverage_gamma: 0.0,
+            reward_progress_alpha: 0.0,
+            ..RLConfig::default()
+        };
+
+        let task = TaskInstance {
+            id: "t1".into(),
+            position: Position::new(5.0, 5.0),
+            value: 10.0,
+            deadline: 10,
+            remaining_time: 10,
+            type_requirements: AgentTypeRequirements::new(1, 0, 0),
+            collection_radius: 3.0,
+            remaining_appearances: None,
+        };
+        let top_m: Vec<&TaskInstance> = vec![&task];
+
+        let agents_far = vec![AgentState::new("a0".into(), Position::new(50.0, 50.0), AgentType::Young)];
+        let agents_near = vec![AgentState::new("a0".into(), Position::new(5.0, 5.0), AgentType::Young)];
+
+        let reward_far = RewardComputer::compute(0.0, &[], &agents_far, &top_m, &config);
+        let reward_near = RewardComputer::compute(0.0, &[], &agents_near, &top_m, &config);
+
+        // With gamma=0, both should only differ by time penalty (same)
+        assert!(
+            (reward_near - reward_far).abs() < 1e-10,
+            "With gamma=0, rewards should be equal: near={}, far={}",
+            reward_near,
+            reward_far
+        );
     }
 }

@@ -3,6 +3,8 @@ pub mod rl;
 
 pub use est::ESTScheduler;
 pub use rl::scheduler::RLScheduler;
+#[cfg(feature = "rl-nn")]
+pub use rl::policy_scheduler::PolicyDrivenScheduler;
 
 use std::collections::HashMap;
 

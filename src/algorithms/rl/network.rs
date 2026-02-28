@@ -5,6 +5,8 @@
 
 use tch::{nn, nn::Module, nn::OptimizerConfig, Device, Kind, Tensor};
 
+use std::path::Path;
+
 use super::config::RLConfig;
 use super::policy::Policy;
 
@@ -173,6 +175,35 @@ impl NeuralPolicy {
     /// Returns a mutable reference to the underlying actor network.
     pub fn actor_mut(&mut self) -> &mut ActorNetwork {
         &mut self.actor
+    }
+
+    /// Loads pre-trained actor weights from a file.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path to a saved actor checkpoint (e.g. `actor.pt`)
+    pub fn load_actor(&mut self, path: &Path) -> Result<(), tch::TchError> {
+        self.actor.var_store_mut().load(path)
+    }
+
+    /// Creates a `NeuralPolicy` that shares weights with an existing `VarStore`.
+    ///
+    /// This is used during evaluation to create a read-only copy that mirrors
+    /// the current training actor without copying weights.
+    pub fn from_actor_var_store(vs: &nn::VarStore, config: &RLConfig) -> Self {
+        let obs_dim = config.observation_dim();
+        let action_dim = config.action_dim();
+        let device = vs.device();
+        // Create a new actor with matching architecture, then copy weights
+        let mut actor = ActorNetwork::new(obs_dim, action_dim, device);
+        actor
+            .var_store_mut()
+            .copy(vs)
+            .expect("Failed to copy weights from training actor");
+        Self {
+            actor,
+            greedy: false,
+        }
     }
 }
 

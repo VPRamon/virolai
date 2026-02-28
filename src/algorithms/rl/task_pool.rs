@@ -1,6 +1,6 @@
 //! Task instance management: spawning, collection, and expiration.
 
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 use super::config::RLConfig;
 use super::types::{AgentType, AgentTypeRequirements, Position};
@@ -178,7 +178,7 @@ impl TaskPool {
     ///
     /// At each call, for each template with remaining appearances, a task
     /// is spawned with probability `config.spawn_rate`, up to the active limit.
-    pub fn spawn<R: Rng>(&mut self, rng: &mut R, config: &RLConfig) {
+    pub fn spawn<R: Rng + RngExt>(&mut self, rng: &mut R, config: &RLConfig) {
         if self.active.len() >= config.max_active_tasks {
             return;
         }
@@ -196,17 +196,17 @@ impl TaskPool {
             if self.active.len() >= config.max_active_tasks {
                 break;
             }
-            if rng.gen::<f64>() > config.spawn_rate {
+            if rng.random::<f64>() > config.spawn_rate {
                 continue;
             }
 
             let template = &mut self.templates[idx];
-            let value = rng.gen::<f64>() * (template.value_range.1 - template.value_range.0)
+            let value = rng.random::<f64>() * (template.value_range.1 - template.value_range.0)
                 + template.value_range.0;
-            let deadline = rng.gen_range(template.deadline_range.0..=template.deadline_range.1);
+            let deadline = rng.random_range(template.deadline_range.0..=template.deadline_range.1);
             let position = Position::new(
-                rng.gen::<f64>() * config.world_width,
-                rng.gen::<f64>() * config.world_height,
+                rng.random::<f64>() * config.world_width,
+                rng.random::<f64>() * config.world_height,
             );
             let radius = template
                 .collection_radius
@@ -346,7 +346,7 @@ mod tests {
             spawn_rate: 1.0, // always spawn
             ..RLConfig::default()
         };
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         // Spawn multiple times
         for _ in 0..10 {
             pool.spawn(&mut rng, &config);
