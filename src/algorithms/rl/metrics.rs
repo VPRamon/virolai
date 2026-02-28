@@ -9,6 +9,7 @@ use super::environment::RLEnvironment;
 use super::policy::Policy;
 
 /// Aggregated evaluation metrics over multiple episodes.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
 pub struct EvaluationMetrics {
     /// Mean total collected value per episode.
