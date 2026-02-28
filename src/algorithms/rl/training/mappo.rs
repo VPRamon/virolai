@@ -597,7 +597,14 @@ mod tests {
         let train_config = TrainingConfig::default();
         let mut trainer = MAPPOTrainer::new(env_config.clone(), train_config.clone(), 2, Device::Cpu);
 
-        let dir = std::env::temp_dir().join("virolai_test_checkpoint");
+        let dir = std::env::temp_dir().join(format!(
+            "virolai_test_checkpoint_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
         let _ = std::fs::create_dir_all(&dir);
 
         // Save checkpoint
