@@ -10,6 +10,7 @@
 //! Spatial displacement is ignored (all positions at origin).
 
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use qtty::{Quantity, Unit};
 use tch::Device;
@@ -40,7 +41,10 @@ use crate::solution_space::{Interval, SolutionSpace};
 /// ```
 pub struct PolicyDrivenScheduler {
     /// Loaded neural policy (runs in greedy mode for inference).
-    policy: NeuralPolicy,
+    ///
+    /// Wrapped in `Mutex` because [`SchedulingAlgorithm::schedule`] takes `&self`
+    /// but policy inference requires `&mut self` (the [`Policy`] trait).
+    policy: Mutex<NeuralPolicy>,
     /// RL environment configuration.
     config: RLConfig,
     /// Path to the actor checkpoint.
@@ -76,7 +80,7 @@ impl PolicyDrivenScheduler {
         policy.set_greedy(true);
 
         Ok(Self {
-            policy,
+            policy: Mutex::new(policy),
             config,
             checkpoint_path: checkpoint_path.as_ref().to_path_buf(),
         })
@@ -87,7 +91,7 @@ impl PolicyDrivenScheduler {
     /// Useful for evaluation during training without reloading from disk.
     pub fn with_policy(policy: NeuralPolicy, config: RLConfig) -> Self {
         Self {
-            policy,
+            policy: Mutex::new(policy),
             config,
             checkpoint_path: PathBuf::new(),
         }
@@ -104,7 +108,7 @@ impl PolicyDrivenScheduler {
     /// the environment, and returns the IDs of collected tasks in the order
     /// they were collected.
     fn determine_task_order<T, U>(
-        &mut self,
+        &self,
         blocks: &[SchedulingBlock<T, U, (), petgraph::Directed>],
         solution_space: &SolutionSpace<U>,
     ) -> Vec<String>
@@ -160,9 +164,10 @@ impl PolicyDrivenScheduler {
         // Run episode with the policy
         let mut obs = env.reset();
         let mut collected_order = Vec::new();
+        let mut policy = self.policy.lock().expect("policy mutex poisoned");
 
         for _ in 0..self.config.episode_horizon {
-            let actions = self.policy.select_actions(&obs);
+            let actions = policy.select_actions(&obs);
             let result = env.step(actions);
 
             // Record newly collected task IDs (instance ID → task ID)
@@ -195,12 +200,6 @@ where
         solution_space: &SolutionSpace<U>,
         horizon: Interval<U>,
     ) -> Schedule<U> {
-        // We need `&mut self` for the policy, but the trait requires `&self`.
-        // Use unsafe interior mutability via a raw pointer. The policy's
-        // select_actions only mutates internal RNG state which is safe for
-        // single-threaded scheduling.
-        let self_mut = unsafe { &mut *(self as *const Self as *mut Self) };
-
         let mut schedule = Schedule::new();
         let horizon_start = horizon.start().value();
         let horizon_end = horizon.end().value();
@@ -239,14 +238,14 @@ where
             let urgency_steps = (total_capacity / size).ceil() as u32;
             let deadline = urgency_steps
                 .max(1)
-                .min(self_mut.config.episode_horizon);
+                .min(self.config.episode_horizon);
 
             templates.push(TaskTemplate {
                 name: id.clone(),
                 value_range: (value, value),
                 deadline_range: (deadline, deadline),
                 type_requirements: AgentTypeRequirements::new(1, 0, 0),
-                collection_radius: Some(self_mut.config.collection_radius),
+                collection_radius: Some(self.config.collection_radius),
                 max_appearances: Some(1),
                 appearances_used: 0,
             });
@@ -254,15 +253,16 @@ where
 
         // Run RL episode to determine ordering
         let mut env =
-            RLEnvironment::with_templates(self_mut.config.clone(), templates, 0);
+            RLEnvironment::with_templates(self.config.clone(), templates, 0);
         env.set_agents(&[(1, AgentType::Young)]);
 
         let mut obs = env.reset();
         let mut policy_order: Vec<String> = Vec::new();
         let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut policy = self.policy.lock().expect("policy mutex poisoned");
 
-        for _ in 0..self_mut.config.episode_horizon {
-            let actions = self_mut.policy.select_actions(&obs);
+        for _ in 0..self.config.episode_horizon {
+            let actions = policy.select_actions(&obs);
             let result = env.step(actions);
 
             // Collected instance IDs are "{task_id}_{counter}"; recover original task ID
@@ -278,6 +278,9 @@ where
                 break;
             }
         }
+
+        // Release the policy lock before the placement phases
+        drop(policy);
 
         // Build a lookup for task_info
         let task_lookup: std::collections::HashMap<String, (f64, Vec<(f64, f64)>)> = task_info

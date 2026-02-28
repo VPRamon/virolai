@@ -179,6 +179,12 @@ impl RLEnvironment {
 
         // 2-3. Agents choose actions and move
         let agent_positions: Vec<_> = self.agents.iter().map(|a| a.position).collect();
+        // Capture pre-movement positions/types for coverage delta computation
+        let prev_agent_pos_types: Vec<_> = self
+            .agents
+            .iter()
+            .map(|a| (a.position, a.agent_type))
+            .collect();
         let top_m = self.task_pool.top_m(&agent_positions, self.config.top_m);
         let top_m_refs: Vec<&_> = top_m.to_vec();
 
@@ -212,6 +218,7 @@ impl RLEnvironment {
             collected_value,
             &expired,
             &self.agents,
+            &prev_agent_pos_types,
             &top_m_after_refs,
             &self.config,
         );

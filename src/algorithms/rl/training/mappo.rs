@@ -12,11 +12,13 @@ use rand::RngExt;
 
 use super::buffer::{RolloutBuffer, Transition};
 use super::gae::compute_gae;
+use crate::algorithms::rl::agent::AgentState;
 use crate::algorithms::rl::config::RLConfig;
 use crate::algorithms::rl::environment::RLEnvironment;
 use crate::algorithms::rl::metrics::EvaluationMetrics;
 use crate::algorithms::rl::network::{ActorNetwork, CriticNetwork, NeuralPolicy};
 use crate::algorithms::rl::observation::ObservationBuilder;
+use crate::algorithms::rl::types::AgentType;
 
 /// Training hyperparameters for MAPPO.
 #[derive(Debug, Clone)]
@@ -102,6 +104,34 @@ fn clip_grad_norm(vs: &nn::VarStore, max_norm: f64) {
             }
         }
     }
+}
+
+/// Derives agent composition `(count, AgentType)` pairs from a slice of agents.
+///
+/// Used to create a separate evaluation environment with the same agent
+/// makeup as the training environment, without sharing RNG state.
+fn derive_agent_composition(agents: &[AgentState]) -> Vec<(u32, AgentType)> {
+    let mut young = 0u32;
+    let mut middle = 0u32;
+    let mut old = 0u32;
+    for agent in agents {
+        match agent.agent_type {
+            AgentType::Young => young += 1,
+            AgentType::Middle => middle += 1,
+            AgentType::Old => old += 1,
+        }
+    }
+    let mut composition = Vec::new();
+    if young > 0 {
+        composition.push((young, AgentType::Young));
+    }
+    if middle > 0 {
+        composition.push((middle, AgentType::Middle));
+    }
+    if old > 0 {
+        composition.push((old, AgentType::Old));
+    }
+    composition
 }
 
 /// MAPPO trainer implementing Centralized Training, Decentralized Execution.
@@ -217,15 +247,21 @@ impl MAPPOTrainer {
                 );
             }
 
-            // Periodic evaluation
+            // Periodic evaluation (uses a separate env to avoid perturbing training RNG)
             if self.train_config.eval_interval > 0
                 && update % self.train_config.eval_interval == 0
             {
                 let mut eval_policy =
                     NeuralPolicy::from_actor_var_store(self.actor.var_store(), &self.env_config);
                 eval_policy.set_greedy(true);
+
+                // Build agent composition from the training env
+                let composition = derive_agent_composition(&env.agents);
+                let mut eval_env = RLEnvironment::new(self.env_config.clone(), 1_000_000);
+                eval_env.set_agents(&composition);
+
                 let metrics = EvaluationMetrics::evaluate(
-                    env,
+                    &mut eval_env,
                     &mut eval_policy,
                     self.train_config.eval_episodes,
                 );

@@ -19,11 +19,12 @@ impl RewardComputer {
     /// 2. **Expiration penalty**: `-β × V_j` for each expired task.
     /// 3. **Time penalty**: `-c_time` per step.
     /// 4. **Progress shaping**: `+α × Σ_i (dist_prev - dist_now)` for agents moving toward targets.
-    /// 5. **Coverage shaping**: `+γ × ΔP_j` when requirement coverage improves.
+    /// 5. **Coverage shaping**: `+γ × ΔP_j` — improvement in requirement coverage since last step.
     pub fn compute(
         collected_value: f64,
         expired_tasks: &[TaskInstance],
         agents: &[AgentState],
+        prev_agent_pos_types: &[(super::types::Position, super::types::AgentType)],
         top_m_tasks: &[&TaskInstance],
         config: &RLConfig,
     ) -> f64 {
@@ -47,17 +48,25 @@ impl RewardComputer {
             .sum();
         reward += config.reward_progress_alpha * progress;
 
-        // 5. Coverage shaping: +γ × Σ_j P_j for top-M tasks
+        // 5. Coverage shaping: +γ × ΔP_j (improvement in coverage since last step)
         if config.reward_coverage_gamma.abs() > f64::EPSILON {
-            let agent_pos_types: Vec<_> = agents
+            let curr_pos_types: Vec<_> = agents
                 .iter()
                 .map(|a| (a.position, a.agent_type))
                 .collect();
-            let coverage: f64 = top_m_tasks
+            let curr_coverage: f64 = top_m_tasks
                 .iter()
-                .map(|task| Self::coverage_progress(task, &agent_pos_types))
+                .map(|task| Self::coverage_progress(task, &curr_pos_types))
                 .sum();
-            reward += config.reward_coverage_gamma * coverage;
+            let prev_coverage: f64 = if prev_agent_pos_types.is_empty() {
+                0.0
+            } else {
+                top_m_tasks
+                    .iter()
+                    .map(|task| Self::coverage_progress(task, prev_agent_pos_types))
+                    .sum()
+            };
+            reward += config.reward_coverage_gamma * (curr_coverage - prev_coverage);
         }
 
         reward
@@ -105,7 +114,7 @@ mod tests {
     #[test]
     fn collection_reward_added() {
         let config = RLConfig::default();
-        let reward = RewardComputer::compute(10.0, &[], &[], &[], &config);
+        let reward = RewardComputer::compute(10.0, &[], &[], &[], &[], &config);
         // Should be: 10.0 - c_time
         assert!(reward > 9.0);
     }
@@ -123,7 +132,7 @@ mod tests {
             collection_radius: 1.0,
             remaining_appearances: None,
         }];
-        let reward = RewardComputer::compute(0.0, &expired, &[], &[], &config);
+        let reward = RewardComputer::compute(0.0, &expired, &[], &[], &[], &config);
         // Should be: -beta*10 - c_time = -5.0 - 0.01
         assert!(reward < -4.0);
     }
@@ -186,22 +195,24 @@ mod tests {
             collection_radius: 3.0,
             remaining_appearances: None,
         };
-
-        // Agent far from task → low coverage
-        let agents_far = vec![AgentState::new("a0".into(), Position::new(50.0, 50.0), AgentType::Young)];
         let top_m: Vec<&TaskInstance> = vec![&task];
-        let reward_far = RewardComputer::compute(0.0, &[], &agents_far, &top_m, &config);
 
-        // Agent within collection radius → full coverage
+        // Agent moved from far to near → positive coverage delta
+        let prev_far = vec![(Position::new(50.0, 50.0), AgentType::Young)];
         let agents_near = vec![AgentState::new("a0".into(), Position::new(5.0, 5.0), AgentType::Young)];
-        let reward_near = RewardComputer::compute(0.0, &[], &agents_near, &top_m, &config);
+        let reward_improved = RewardComputer::compute(0.0, &[], &agents_near, &prev_far, &top_m, &config);
 
-        // Coverage shaping should make near-agent reward higher
+        // Agent moved from near to far → negative coverage delta
+        let prev_near = vec![(Position::new(5.0, 5.0), AgentType::Young)];
+        let agents_far = vec![AgentState::new("a0".into(), Position::new(50.0, 50.0), AgentType::Young)];
+        let reward_worsened = RewardComputer::compute(0.0, &[], &agents_far, &prev_near, &top_m, &config);
+
+        // Moving toward task should yield higher reward than moving away
         assert!(
-            reward_near > reward_far,
-            "Near reward ({}) should be > far reward ({})",
-            reward_near,
-            reward_far
+            reward_improved > reward_worsened,
+            "Improved reward ({}) should be > worsened reward ({})",
+            reward_improved,
+            reward_worsened
         );
     }
 
@@ -227,11 +238,13 @@ mod tests {
         };
         let top_m: Vec<&TaskInstance> = vec![&task];
 
-        let agents_far = vec![AgentState::new("a0".into(), Position::new(50.0, 50.0), AgentType::Young)];
+        // Different prev/current positions but gamma=0 → no coverage contribution
+        let prev = vec![(Position::new(50.0, 50.0), AgentType::Young)];
         let agents_near = vec![AgentState::new("a0".into(), Position::new(5.0, 5.0), AgentType::Young)];
+        let agents_far = vec![AgentState::new("a0".into(), Position::new(50.0, 50.0), AgentType::Young)];
 
-        let reward_far = RewardComputer::compute(0.0, &[], &agents_far, &top_m, &config);
-        let reward_near = RewardComputer::compute(0.0, &[], &agents_near, &top_m, &config);
+        let reward_near = RewardComputer::compute(0.0, &[], &agents_near, &prev, &top_m, &config);
+        let reward_far = RewardComputer::compute(0.0, &[], &agents_far, &prev, &top_m, &config);
 
         // With gamma=0, both should only differ by time penalty (same)
         assert!(
