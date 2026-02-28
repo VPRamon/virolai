@@ -5,7 +5,7 @@
 /// Actions are indices into the Top-M + patrol set:
 /// - 0: patrol (no target)
 /// - 1..=M: target the corresponding task in the Top-M list
-pub trait Policy: Send + Sync {
+pub trait Policy: Send {
     /// Selects one action per agent given their observations.
     ///
     /// # Arguments

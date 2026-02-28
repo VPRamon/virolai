@@ -41,7 +41,7 @@ use crate::solution_space::{Interval, SolutionSpace};
 /// ```ignore
 /// use virolai::algorithms::RLScheduler;
 ///
-/// let scheduler = RLScheduler::from_checkpoint("checkpoints/actor.pt", tch::Device::Cpu)?;
+/// let scheduler = RLScheduler::from_checkpoint("checkpoints/actor.safetensors", tch::Device::Cpu)?;
 /// let schedule = scheduler.schedule(&blocks, &solution_space, horizon);
 /// ```
 pub struct RLScheduler {
@@ -61,7 +61,7 @@ impl RLScheduler {
     ///
     /// # Arguments
     ///
-    /// * `checkpoint_path` - Path to the saved `actor.pt` file
+    /// * `checkpoint_path` - Path to the saved `actor.safetensors` file
     /// * `device` - Device to run inference on (CPU or CUDA)
     ///
     /// # Errors

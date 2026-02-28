@@ -3,7 +3,7 @@
 //! Provides MLP-based actor and critic networks for MAPPO training.
 //! This module is only available with the `rl-nn` feature.
 
-use tch::{nn, nn::Module, nn::OptimizerConfig, Device, Kind, Tensor};
+use tch::{nn, nn::Module, Device, Kind, Tensor};
 
 use std::path::Path;
 
@@ -181,7 +181,7 @@ impl NeuralPolicy {
     ///
     /// # Arguments
     ///
-    /// * `path` - Path to a saved actor checkpoint (e.g. `actor.pt`)
+    /// * `path` - Path to a saved actor checkpoint (e.g. `actor.safetensors`)
     pub fn load_actor(&mut self, path: &Path) -> Result<(), tch::TchError> {
         self.actor.var_store_mut().load(path)
     }
@@ -219,7 +219,9 @@ impl Policy for NeuralPolicy {
             .iter()
             .flat_map(|o| o.iter().copied())
             .collect();
-        let obs_tensor = Tensor::from_slice(&flat).reshape([n_agents as i64, obs_dim as i64]);
+        let obs_tensor = Tensor::from_slice(&flat)
+            .reshape([n_agents as i64, obs_dim as i64])
+            .to_kind(Kind::Float);
 
         let actions = if self.greedy {
             let log_probs = self.actor.forward(&obs_tensor);
@@ -229,7 +231,9 @@ impl Policy for NeuralPolicy {
             actions
         };
 
-        let actions_vec: Vec<i64> = actions.into();
+        let actions_vec: Vec<i64> = actions
+            .try_into()
+            .expect("NeuralPolicy actions tensor must be convertible to Vec<i64>");
         actions_vec.iter().map(|&a| a as usize).collect()
     }
 

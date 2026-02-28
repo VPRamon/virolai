@@ -98,7 +98,7 @@ fn clip_grad_norm(vs: &nn::VarStore, max_norm: f64) {
     if total_norm > max_norm {
         let clip_coef = max_norm / (total_norm + 1e-6);
         for var in &vars {
-            let g = var.grad();
+            let mut g = var.grad();
             if g.defined() {
                 let _ = g.multiply_scalar_(clip_coef);
             }
@@ -176,7 +176,7 @@ impl MAPPOTrainer {
         let global_state_dim = ObservationBuilder::global_state_dim(n_agents, &env_config);
 
         let mut actor = ActorNetwork::new(obs_dim, action_dim, device);
-        let critic = CriticNetwork::new(global_state_dim, device);
+        let mut critic = CriticNetwork::new(global_state_dim, device);
 
         let actor_opt = nn::Adam::default()
             .build(actor.var_store_mut(), train_config.lr_actor)
@@ -313,8 +313,12 @@ impl MAPPOTrainer {
                     .reshape([n_agents as i64, obs_dim as i64])
                     .to_kind(Kind::Float);
                 let (actions_t, log_probs_t) = self.actor.sample_actions(&obs_tensor);
-                let actions: Vec<i64> = actions_t.into();
-                let log_probs: Vec<f64> = log_probs_t.into();
+                let actions: Vec<i64> = actions_t
+                    .try_into()
+                    .expect("sampled actions must be convertible to Vec<i64>");
+                let log_probs: Vec<f64> = log_probs_t
+                    .try_into()
+                    .expect("sampled log_probs must be convertible to Vec<f64>");
                 (
                     actions.iter().map(|&a| a as usize).collect::<Vec<_>>(),
                     log_probs,
@@ -482,23 +486,31 @@ impl MAPPOTrainer {
     /// Saves actor and critic checkpoints to `dir`.
     ///
     /// Creates the directory if it does not exist. Saves:
-    /// - `dir/actor.pt` — actor network weights
-    /// - `dir/critic.pt` — critic network weights
+    /// - `dir/actor.safetensors` — actor network weights
+    /// - `dir/critic.safetensors` — critic network weights
     pub fn save_checkpoint(&self, dir: &Path) -> Result<(), tch::TchError> {
         std::fs::create_dir_all(dir).map_err(|e| {
             tch::TchError::FileFormat(format!("Failed to create checkpoint dir: {}", e))
         })?;
-        self.actor.var_store().save(dir.join("actor.pt"))?;
-        self.critic.var_store().save(dir.join("critic.pt"))?;
+        self.actor
+            .var_store()
+            .save(dir.join("actor.safetensors"))?;
+        self.critic
+            .var_store()
+            .save(dir.join("critic.safetensors"))?;
         Ok(())
     }
 
     /// Loads actor and critic weights from a checkpoint directory.
     ///
-    /// Expects `dir/actor.pt` and `dir/critic.pt` to exist.
+    /// Expects `dir/actor.safetensors` and `dir/critic.safetensors` to exist.
     pub fn load_checkpoint(&mut self, dir: &Path) -> Result<(), tch::TchError> {
-        self.actor.var_store_mut().load(dir.join("actor.pt"))?;
-        self.critic.var_store_mut().load(dir.join("critic.pt"))?;
+        self.actor
+            .var_store_mut()
+            .load(dir.join("actor.safetensors"))?;
+        self.critic
+            .var_store_mut()
+            .load(dir.join("critic.safetensors"))?;
         Ok(())
     }
 }
@@ -611,8 +623,8 @@ mod tests {
         trainer.save_checkpoint(&dir).expect("save should succeed");
 
         // Verify files exist
-        assert!(dir.join("actor.pt").exists());
-        assert!(dir.join("critic.pt").exists());
+        assert!(dir.join("actor.safetensors").exists());
+        assert!(dir.join("critic.safetensors").exists());
 
         // Load into new trainer
         let mut trainer2 = MAPPOTrainer::new(env_config, train_config, 2, Device::Cpu);
